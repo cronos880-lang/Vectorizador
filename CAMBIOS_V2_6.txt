@@ -1,0 +1,8 @@
+Vectorizador V2.6 (consolidacion, 24-10-2026)
+- Integra todas las funciones ya validadas de V2.5.3 y la ayuda corregida.
+- Unifica la version visible y de servidor a V2.6.
+- Mantiene compatibilidad de archivos .vect existentes (formato VECT1).
+- Sin alteraciones nuevas de algoritmos CAD, STL ni de medicion.
+- Retiradas de la interfaz las opciones de holgura de agujeros y precision geométrica; internamente valores neutros.
+- Redondeo de esquinas no incluido.
+- No incluye los archivos personales generados por sesiones anteriores.

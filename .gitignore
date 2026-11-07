@@ -1,0 +1,38 @@
+# Entornos y compilación
+.venv/
+.build_venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.pyinstaller/
+build/
+dist/
+_internal/
+*.spec
+
+# Datos y archivos generados del usuario
+Archivos/**
+!Archivos/
+!Archivos/DXF/
+!Archivos/Fotos/
+!Archivos/Historial/
+!Archivos/STL/
+!Archivos/DXF/.gitkeep
+!Archivos/Fotos/.gitkeep
+!Archivos/Historial/.gitkeep
+!Archivos/STL/.gitkeep
+*.vect
+
+# Edición local
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.env
+.env.*
+
+# No publicar fotografias de ejemplo
+ejemplos/*.jpg
+ejemplos/*.jpeg

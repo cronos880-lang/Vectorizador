@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vectorizador V2.6</title>
+<style>
+:root {color-scheme:dark;--bg:#0e121b;--surface:#171d28;--edge:#2c3544;--text:#e9eef7;--muted:#8e9caf;--blue:#458fff}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+.app{display:flex;flex-direction:column;width:100%;height:100dvh;min-height:350px}
+.toolbar{height:70px;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:0 22px;background:var(--surface);border-bottom:1px solid var(--edge)}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto;min-width:0}
+.brand-icon{width:34px;height:34px;border:1px solid #3c526e;background:#1c3049;color:#8ac4ff;border-radius:10px;display:grid;place-items:center}
+.brand-name{font-weight:650;font-size:16px;letter-spacing:.15px;white-space:nowrap}.brand-subtitle{font-size:11px;color:var(--muted);margin-top:1px}
+.buttons{display:flex;align-items:center;gap:9px}
+button{font:600 13px system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;border-radius:9px;min-height:38px;padding:0 16px;border:1px solid #3a4658;color:#e5ebf5;background:#242c39;transition:background .12s,border-color .12s}
+button:disabled{opacity:.4;cursor:not-allowed}button:hover:not(:disabled){background:#303b4d;border-color:#55647a}button:focus-visible{outline:2px solid #8ec4ff;outline-offset:2px}
+button.primary{background:#3579e5;color:white;border-color:#4187f8}button.primary:hover{background:#498af0}button svg{vertical-align:middle;margin-right:6px}
+.version{color:#8e9caf;font-size:11px;white-space:nowrap;min-width:92px;text-align:right;border-left:1px solid #303847;padding-left:14px}
+.viewport{position:relative;min-height:0;flex:1;background:radial-gradient(ellipse at 55% 42%,#212b3a 0%,#111924 70%,#0b111a 100%);overflow:hidden}
+#view{display:block;width:100%;height:100%;cursor:grab;touch-action:none}#view.dragging{cursor:grabbing}#view.calibrating{cursor:crosshair}
+.view-pill{position:absolute;left:19px;top:18px;font-size:12px;color:#acb8c8;background:#101722ce;border:1px solid #303c4c;padding:6px 10px;border-radius:8px;pointer-events:none}
+.empty{position:absolute;top:47%;left:50%;transform:translate(-50%,-50%);pointer-events:none;text-align:center;width:min(90%,420px)}
+.empty-symbol{width:64px;height:64px;display:grid;place-items:center;margin:0 auto 16px;color:#7c9cbf;border:1px dashed #53647a;border-radius:16px;background:#1d29383f}
+.empty h2{font-size:19px;font-weight:600;margin:0 0 7px}.empty p{font-size:13px;line-height:1.6;color:#91a1b5;margin:0}
+.hint{position:absolute;bottom:17px;left:19px;pointer-events:none;font-size:12px;color:#9aa9bd;padding:9px 11px;background:#101721bd;border:1px solid #2a3443;border-radius:9px}
+.hint b{color:#c2cfdf;font-weight:600}
+.status{flex-shrink:0;background:#171d28;min-height:39px;border-top:1px solid var(--edge);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:9px 20px;font-size:12px;color:#9babbc}
+.status .filename{color:#dae3ef;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.status-right{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0;max-width:80%}.status .details{text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.progress-num{flex-shrink:0;color:#b9d7ff;font-variant-numeric:tabular-nums;font-size:13px}
+.error-toast{display:none;position:absolute;top:60px;left:50%;transform:translateX(-50%);color:#ffe1e1;background:#58252a;border:1px solid #aa4b50;padding:12px 17px;max-width:90%;border-radius:8px;box-shadow:0 9px 35px #0008;font-size:13px;text-align:center;z-index:9}
+.controls{display:none;position:absolute;right:16px;top:16px;width:248px;max-height:calc(100% - 32px);overflow-y:auto;padding:12px;border:1px solid #344358;border-radius:10px;background:#101823ec;box-shadow:0 8px 24px #0004;font-size:12px;z-index:2}
+.controls label{display:block;color:#acbed0;margin-bottom:5px}.controls input[type=range]{width:100%;accent-color:#458fff}.controls .tools{display:flex;gap:6px;margin-top:8px}.controls button{font-size:11px;min-height:31px;padding:0 9px;flex:1}.controls .control-title{font-weight:650;margin-bottom:10px}
+.controls .mini{color:#9eafc3;font-size:11px;line-height:1.5;margin-top:7px}.controls .dim{color:#9fe0ab;font-variant-numeric:tabular-nums}
+.controls select{width:100%;background:#243144;color:#e9eef7;border:1px solid #445166;border-radius:6px;padding:6px;margin:5px 0 4px}
+.export-menu{display:none;position:absolute;right:16px;top:65px;width:200px;padding:12px;background:#192332;border:1px solid #3e5269;border-radius:10px;box-shadow:0 12px 30px #0008;z-index:5}.export-menu button{display:block;width:100%;margin-top:6px;text-align:left}
+.small-action{display:block;background:none;color:#9cbefa;border:0;min-height:0;padding:6px 0;text-align:left;font-size:11px}
+@media(max-width:900px){.toolbar{padding:0 10px;gap:5px}.buttons{gap:4px}button{padding:0 9px;font-size:11px}.brand{gap:6px}.brand-name{font-size:13px}.brand-subtitle{display:none}.version{padding-left:6px;min-width:auto;font-size:10px}.controls{width:195px}}
+.triple-input{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:5px}.triple-input input{min-width:0;width:100%;background:#243144;color:#fff;border:1px solid #48576d;border-radius:5px;padding:6px;font-size:12px}
+.name-backdrop{display:none;position:absolute;inset:0;background:#050a12bb;z-index:20;align-items:center;justify-content:center;padding:16px}
+.name-popup{background:#192330;border:1px solid #4a5b70;border-radius:14px;box-shadow:0 22px 55px #000a;width:min(420px,100%);padding:22px}
+.name-popup h3{margin:0 0 7px;font-size:17px}.name-popup p{color:#9db0c8;margin:0 0 14px;font-size:12px;line-height:1.5}
+.name-popup input{display:block;width:100%;padding:11px 12px;background:#0f1824;border:1px solid #576d88;border-radius:8px;color:#eaf1fc;font-size:14px}
+.name-popup input:focus{outline:2px solid #6ea7ff;outline-offset:1px}
+.name-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:17px}.name-actions button{min-width:100px}
+.brand-version{font-size:.65em;font-weight:500;color:#87b5f8;white-space:nowrap}details summary{cursor:pointer;color:#abc4e2;font-weight:600;list-style-position:inside}details[open]{padding:6px 0 8px;border-top:1px solid #334156}details input{margin-top:4px;display:block} .tools button{flex:1}
+
+/* Editor CAD V2.0.19: barra izquierda integrada con la familia visual original */
+.cadbar{position:absolute;left:14px;top:103px;display:none;z-index:4;flex-direction:column;gap:7px;padding:9px;border:1px solid #344358;background:#111c29ef;border-radius:12px;box-shadow:0 10px 28px #0006;max-height:calc(100% - 119px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#52677f #111c29;}
+.cadbar button{flex-shrink:0;min-width:44px;width:44px;height:45px;min-height:45px;padding:2px 0;font-size:11px;line-height:1.25;color:#b9cee3}
+.cadbar button span{display:block;font-size:19px;line-height:23px}
+.cadbar button.active{border-color:#57a4ff;color:#fff;background:#2d5c93}
+.cadbar hr{flex-shrink:0;border:0;border-top:1px solid #3c4b5e;width:100%}
+.cad-property{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.cad-property input{width:100%;min-width:0;background:#243144;color:#ecf3fc;border:1px solid #48576d;border-radius:6px;padding:6px}
+.cadPanelDetails{margin-top:9px;padding-top:9px;border-top:1px solid #344358}
+.cadToggle{position:absolute;left:19px;top:18px;z-index:3;display:none;padding:7px 11px;font-size:11px;min-height:33px}
+body:has(.cadbar[style*="flex"]) .hint{left:80px}
+@media(max-width:780px){.status .details{display:none}}
+@media(max-width:650px){.cadbar{left:5px;top:103px;padding:4px}.cadbar button{width:38px;min-width:38px}.cadToggle{left:6px}.controls{max-height:calc(100% - 32px)}}
+
+.foto-lista{max-height:min(52vh,430px);overflow:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}
+.foto-item{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;min-height:119px;padding:7px;font-size:11px;text-align:center}
+.foto-item img{object-fit:contain;width:100%;height:82px;border-radius:5px;background:#0e1520}
+.foto-item span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.foto-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px;justify-content:flex-end}
+.foto-actions button{min-height:32px;font-size:11px;padding:0 10px}
+@media(max-width:530px){.foto-lista{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* V2.0.19: paneles concisos sin eliminar entradas utilizadas por el motor. */
+.controls{width:248px !important}
+.controls .cadCompat{display:none !important}
+.controls .cadMetrics{margin:14px 0 0;padding-top:10px;border-top:1px solid #344358}
+.controls #cadSelection{margin:0 !important;color:#e1ebf7;line-height:1.55;min-height:20px}
+.controls #cadMeasurePanel{margin-top:12px}
+.controls #cadMeasureResult{font-size:12px;color:#dbe9fa;line-height:1.45}
+.controls #cadPhotoInfo{display:none}
+.controls #cadPhotoOpacity{margin-bottom:4px}
+.controls #cadPanel>.control-title{margin-bottom:10px}
+.controls #vectorPanel .tools button{width:100%}
+
+/* V2.0.19: diámetro editable visible fuera del bloque de compatibilidad oculto. */
+.controls .cad-diameter-row{display:flex;align-items:center;gap:8px;margin-top:7px}
+.controls .cad-diameter-row input{min-width:0;width:100%;flex:1;background:#243144;color:#eef5ff;border:1px solid #586a81;border-radius:6px;padding:8px;font-size:13px;font-variant-numeric:tabular-nums}
+.controls .cad-diameter-row button{flex:0 0 auto;min-height:34px}
+.controls .cad-center-details{margin-top:9px;font-size:11px}
+.controls .cad-center-details summary{color:#92a9c6}
+
+/* Paneles avanzados V2.0.19 */
+.cadbar button.active,#avTrim.active,#avExtend.active{border-color:#e7c572;background:#654b2b;color:#fff2c1}.avFloatStatus{position:absolute;z-index:4;left:20px;bottom:62px;max-width:min(570px,calc(100% - 330px));background:#10273beF;color:#ffe7ab;border:1px solid #937c42;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5;pointer-events:none;box-shadow:0 8px 22px #0007}.avVerifySummary{font-weight:700;color:#c6ecdb;margin:6px 0}.avTools{padding-top:11px;margin-top:10px;border-top:1px solid #334156;font-size:11px;color:#c6d6e8}.avTools summary{font-size:12px;margin:5px 0 8px}.avSection{padding:9px 0;border-bottom:1px solid #344358}.avSection b{display:block;margin-bottom:8px}.avInfo{color:#dfc68d;line-height:1.5;margin-top:7px}.avActions{display:flex;gap:5px;flex-wrap:wrap;margin:7px 0}.avActions button{flex:1;min-width:72px}.avList{max-height:190px;overflow:auto;margin:8px 0}.avWarn{display:block;width:100%;text-align:left;margin-top:4px;font-size:11px;overflow-wrap:anywhere}.avTools input[type=number]{background:#243144;color:white;border:1px solid #48576d;border-radius:5px;padding:5px;width:100%;box-sizing:border-box}.avTools input[type=range]{width:100%}.avTools label{margin:4px 0;display:block}.avSection[hidden],#avMultiOptions[hidden]{display:none!important}
+
+/* V2.0.19: ayuda a demanda, fuera de los paneles laterales. */
+.help-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:#060b14cc;z-index:35}
+.help-dialog{width:min(680px,100%);max-height:min(86vh,820px);display:flex;flex-direction:column;background:#172233;border:1px solid #4e6178;border-radius:14px;box-shadow:0 24px 75px #000c;overflow:hidden}
+.help-head{display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid #344860}
+.help-head h2{font-size:17px;margin:0;flex:1}
+.help-head button{min-height:31px;padding:0 12px}
+.help-body{padding:8px 22px 23px;overflow-y:auto;font-size:13px;line-height:1.55;color:#c8d6e7}
+.help-body h3{font-size:14px;margin:19px 0 6px;color:#e9f2ff}
+.help-body p{margin:5px 0 10px}
+.help-body strong{color:#eff5fd}
+.help-body #avReviewDetails{margin:14px 0 0;border-top:1px solid #38516a;padding-top:12px}
+.help-body #avWarnings{margin:7px 0}
+.help-body #avWarnings button{color:#e8f2ff}
+.help-body #avJoinTol{max-width:180px}
+.help-body .avInfo{color:#becee0}
+.help-body #avMsg{color:#d2e5fa;border:1px solid #3e5571;background:#13273b;padding:8px 10px;border-radius:6px}
+#helpBtn{background:#25354a;border-color:#49607c;color:#cbe0fa}
+@media(max-width:700px){.toolbar{padding:0 8px;gap:4px}.buttons{gap:3px}.buttons button{padding:0 8px}.help-body{padding:8px 14px 18px}}
+
+/* V2.0.19 — editor limpio: barra CAD anclada al lateral completo. */
+.toolbar .cadToggle{
+  position:static; top:auto; left:auto; z-index:auto;
+  padding:0 16px; min-height:38px; font-size:13px;
+  border-radius:9px; white-space:nowrap;
+  background:#242c39; color:#e5ebf5; border:1px solid #3a4658;
+}
+.toolbar .cadToggle:hover:not(:disabled){background:#303b4d;border-color:#55647a}
+/* No colocar el indicador «Plano en mm» encima del dibujo CAD. */
+body:has(#cadbar[style*="flex"]) #viewPill{display:none}
+/* La caja utiliza toda la altura útil del plano, sin barra de desplazamiento interna
+   en pantallas de escritorio. Los botones se reparten el espacio disponible. */
+.cadbar{
+  left:0;top:0;bottom:0;right:auto;
+  width:74px;height:100%;max-height:none;
+  padding:7px 8px;gap:3px;
+  border-radius:0 12px 12px 0;
+  overflow:hidden;scrollbar-width:none;
+  justify-content:space-between;
+}
+.cadbar button{
+  width:100%;min-width:0;min-height:0;height:auto;
+  flex:1 1 0;padding:2px 0;
+  font-size:10px;line-height:1.05;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.cadbar button span{display:block;font-size:17px;line-height:20px}
+.cadbar hr{margin:0;flex-shrink:0}
+body:has(#cadbar[style*="flex"]) .hint{left:86px}
+body:has(#cadbar[style*="flex"]) .avFloatStatus{left:86px}
+@media(max-height:740px){
+ .cadbar{padding:4px 6px;gap:2px;width:68px}
+ .cadbar button{font-size:9px;padding:0}
+ .cadbar button span{font-size:15px;line-height:17px}
+ body:has(#cadbar[style*="flex"]) .hint,
+ body:has(#cadbar[style*="flex"]) .avFloatStatus{left:78px}
+}
+/* En ventanas extremadamente bajas, no ocultar acciones: desplazamiento de emergencia. */
+@media(max-height:540px){
+ .cadbar{overflow-y:auto;justify-content:flex-start;scrollbar-width:thin}
+ .cadbar button{flex:0 0 30px}
+}
+@media(max-width:650px){
+ .cadbar{left:0;top:0;bottom:0;width:66px;padding:4px 5px}
+ .cadbar button{width:100%;min-width:0}
+ .toolbar .cadToggle{padding:0 9px;font-size:11px}
+}
+
+/* V2.0.20 — barra CAD con fila superior de acciones y herramientas menos apretadas. */
+.cadbar{
+  left:0;top:0;bottom:0;right:auto;
+  width:172px;height:100%;max-height:none;
+  padding:8px;gap:8px;overflow:hidden;justify-content:flex-start;
+  border-radius:0 14px 14px 0;scrollbar-width:none;
+}
+.cadbar-top{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;flex:0 0 auto}
+.cadbar-tools{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0}
+.cadbar button{width:100%;min-width:0;border-radius:12px}
+.cadbar-top button{
+  min-height:56px;height:56px;padding:4px 2px;font-size:9px;line-height:1.05;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.cadbar-top button span{display:block;font-size:18px;line-height:20px;margin-bottom:2px}
+.cadbar-tools button{
+  min-height:38px;height:38px;padding:0 10px;font-size:12px;line-height:1.1;
+  display:flex;align-items:center;justify-content:flex-start;gap:10px;text-align:left;
+}
+.cadbar-tools button span{display:inline-block;font-size:17px;line-height:1;min-width:18px;text-align:center}
+.cadbar-tools hr{margin:0;border:0;border-top:1px solid #3c4b5e;width:100%}
+body:has(#cadbar[style*="flex"]) .hint{left:184px}
+body:has(#cadbar[style*="flex"]) .avFloatStatus{left:184px}
+@media(max-height:740px){
+  .cadbar{width:164px;padding:6px;gap:6px}
+  .cadbar-top{gap:5px}
+  .cadbar-top button{min-height:52px;height:52px;font-size:8.5px}
+  .cadbar-top button span{font-size:16px;line-height:18px}
+  .cadbar-tools button{min-height:34px;height:34px;font-size:11px;padding:0 8px}
+  body:has(#cadbar[style*="flex"]) .hint,
+  body:has(#cadbar[style*="flex"]) .avFloatStatus{left:176px}
+}
+@media(max-height:620px){
+  .cadbar-tools{overflow-y:auto;scrollbar-width:thin}
+}
+@media(max-width:650px){
+  .cadbar{width:154px;padding:5px}
+  .cadbar-top{gap:4px}
+  .cadbar-top button{min-height:48px;height:48px;font-size:8px}
+  .cadbar-tools button{min-height:32px;height:32px;font-size:10px;padding:0 7px}
+  body:has(#cadbar[style*="flex"]) .hint,
+  body:has(#cadbar[style*="flex"]) .avFloatStatus{left:166px}
+}
+
+
+/* V2.0.22 — Opción A, botones cuadrados originales, sin estrecharlos. */
+.cadbar{
+  left:0;top:0;bottom:0;right:0;
+  width:100%;height:100%;max-height:none;
+  padding:12px;gap:8px;
+  border:0;border-radius:0;background:transparent;box-shadow:none;
+  overflow:visible;scrollbar-width:none;
+  flex-direction:column;align-items:flex-start;justify-content:flex-start;
+  pointer-events:none;
+}
+.cadbar-top,.cadbar-tools{
+  box-sizing:border-box;
+  border:1px solid #344358;border-radius:12px;
+  background:#111c29ef;box-shadow:0 10px 28px #0006;
+  padding:7px;gap:6px;pointer-events:auto;
+}
+.cadbar-top{
+  display:flex;flex-direction:row;align-items:center;width:max-content;
+  flex:0 0 auto;
+}
+.cadbar-tools{
+  display:grid;grid-auto-flow:column;
+  grid-template-rows:repeat(var(--cad-rows,8),56px);
+  grid-auto-columns:76px;
+  width:max-content;height:max-content;min-height:0;
+  flex:0 0 auto;align-content:start;justify-content:start;
+  overflow:visible;
+}
+.cadbar button,
+.cadbar-top button,
+.cadbar-tools button{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  box-sizing:border-box;
+  width:76px;min-width:76px;max-width:76px;
+  height:56px;min-height:56px;max-height:56px;
+  padding:4px 3px;
+  font-size:11px;line-height:1.05;text-align:center;
+  gap:2px;border-radius:11px;
+  flex:none;
+}
+.cadbar button span,
+.cadbar-top button span,
+.cadbar-tools button span{
+  display:block;font-size:20px;line-height:21px;min-width:0;
+  margin:0;text-align:center;
+}
+.cadbar-tools hr{display:none}
+body:has(#cadbar[style*="flex"]) .hint,
+body:has(#cadbar[style*="flex"]) .avFloatStatus{left:calc(12px + var(--cad-tools-width, 180px) + 12px)}
+@media(max-height:740px){
+  .cadbar{width:100%;padding:10px;gap:7px}
+  .cadbar button,.cadbar-top button,.cadbar-tools button{
+    width:76px;min-width:76px;max-width:76px;
+    height:56px;min-height:56px;max-height:56px;
+    font-size:11px;
+  }
+  .cadbar button span,.cadbar-top button span,.cadbar-tools button span{font-size:20px;line-height:21px}
+}
+@media(max-height:620px){
+  .cadbar-tools{overflow:visible}
+  .cadbar button,.cadbar-top button,.cadbar-tools button{flex:none}
+}
+@media(max-width:650px){
+  .cadbar{width:100%;left:0;top:0;bottom:0;padding:7px;gap:6px}
+  .cadbar button,.cadbar-top button,.cadbar-tools button{
+    width:68px;min-width:68px;max-width:68px;
+    height:52px;min-height:52px;max-height:52px;
+    font-size:10px;
+  }
+  .cadbar button span,.cadbar-top button span,.cadbar-tools button span{font-size:18px;line-height:19px}
+  .cadbar-tools{grid-auto-columns:68px;grid-template-rows:repeat(var(--cad-rows,8),52px)}
+}
+
+/* V2.0.22 — Botones compactos como en las primeras versiones.
+   Acciones arriba, dos columnas CAD con el orden aprobado. */
+#openBtn{background:#242c39;color:#e5ebf5;border-color:#3a4658}
+#openBtn:hover:not(:disabled){background:#303b4d;border-color:#55647a}
+.cadbar{
+  top:0;left:0;right:0;bottom:0;
+  width:100%;height:100%;max-height:none;
+  display:none;
+  padding:9px;gap:7px;
+  flex-direction:column;align-items:flex-start;justify-content:flex-start;
+  border:0;border-radius:0;background:transparent;box-shadow:none;
+  overflow:visible;pointer-events:none;
+}
+.cadbar-top,.cadbar-tools{
+  background:#111c29f2;border:1px solid #344358;
+  border-radius:12px;box-shadow:0 8px 22px #0006;
+  padding:5px;gap:5px;width:max-content;height:max-content;
+  flex:0 0 auto;pointer-events:auto;
+}
+.cadbar-top{display:grid;grid-template-columns:repeat(3,48px)}
+.cadbar-tools{
+  display:grid;grid-auto-flow:column;
+  grid-template-rows:repeat(8,48px);
+  grid-auto-columns:64px;
+  align-content:start;justify-content:start;
+  min-height:0;overflow:visible;
+}
+.cadbar button,.cadbar-top button,.cadbar-tools button{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:64px;min-width:0;max-width:none;
+  height:48px;min-height:48px;max-height:48px;
+  font-size:10px;line-height:1.08;text-align:center;
+  padding:2px 2px;gap:1px;flex:none;
+  border-radius:10px;white-space:nowrap;
+}
+.cadbar-top button{
+  width:48px;height:48px;min-height:48px;max-height:48px;
+  font-size:9px;
+}
+.cadbar button span,.cadbar-top button span,.cadbar-tools button span{
+  display:block;font-size:18px;line-height:21px;
+  min-width:0;margin:0;
+}
+.cadbar-tools button[data-cad-tool="segment"] span{
+  font-size:22px;font-weight:600;line-height:21px;letter-spacing:1px;
+}
+.cadbar-tools hr{display:none}
+body:has(#cadbar[style*="flex"]) .hint,
+body:has(#cadbar[style*="flex"]) .avFloatStatus{left:170px}
+@media (max-height:650px){
+  .cadbar{padding:5px;gap:5px}
+  .cadbar-top,.cadbar-tools{padding:4px;gap:4px}
+  .cadbar-top{grid-template-columns:repeat(3,46px)}
+  .cadbar-tools{grid-template-rows:repeat(8,41px);grid-auto-columns:60px}
+  .cadbar button,.cadbar-tools button{
+    width:60px;height:41px;min-height:41px;max-height:41px;
+    font-size:9px;padding:1px;gap:0
+  }
+  .cadbar-top button{
+    width:46px;height:43px;min-height:43px;max-height:43px;font-size:9px;
+  }
+  .cadbar button span,.cadbar-top button span,.cadbar-tools button span{font-size:16px;line-height:18px}
+  body:has(#cadbar[style*="flex"]) .hint,
+  body:has(#cadbar[style*="flex"]) .avFloatStatus{left:154px}
+}
+@media (max-height:470px){
+  .cadbar{overflow-y:auto;pointer-events:auto;max-width:164px}
+}
+
+
+/* V2.0.25 — extrusión STL: diálogo separado del editor y cabecera intacta. */
+.goma-icono svg{display:block;margin:auto;width:21px;height:21px}
+.extrude-backdrop{position:fixed;inset:0;z-index:55;background:#060b14c9;align-items:center;justify-content:center;padding:18px}
+.extrude-popup{width:min(415px,100%);border:1px solid #495c74;border-radius:14px;background:#172233;box-shadow:0 20px 65px #000a;padding:21px}
+.extrude-popup h2{margin:0 0 8px;font-size:18px}
+.extrude-popup p{color:#b4c5d7;font-size:12px;line-height:1.55;margin:5px 0 15px}
+.extrude-popup label{display:block;font-size:13px;font-weight:650;margin-bottom:9px}
+.extrude-number-row{display:flex;align-items:center;gap:8px}
+.extrude-number-row input{width:100%;font-size:20px;font-weight:650;background:#0e1928;color:#e8f2ff;padding:10px;border:1px solid #536780;border-radius:8px}
+.extrude-range-row{display:flex;align-items:center;gap:8px;margin:13px 0 16px;font-size:11px;color:#adbbca}
+.extrude-range-row input{flex:1;min-width:0;accent-color:#458fff}
+.extrude-popup .extrude-note{color:#93a8bf;margin:10px 0 18px}
+.extrude-actions{display:flex;gap:8px;justify-content:flex-end}
+.extrude-actions button{min-width:124px}
+#extrudeConfirm{background:#3579e5;border-color:#498af0;color:white}
+@media(max-width:1110px){.toolbar .buttons{gap:4px}.toolbar .buttons button{padding-left:9px;padding-right:9px;font-size:11px}}
+/* La compensación es específica del STL y no invade la interfaz CAD. */
+.extrude-holgura{margin-top:13px;padding-top:12px;border-top:1px solid #405269}
+.extrude-holgura .extrude-note{margin:7px 0 0;font-size:11px;line-height:1.5}
+
+.extrude-popup{max-height:92dvh;overflow-y:auto}
+/* V2.0.25: previsualización WebGL sobre el STL REAL (sin cambios en CAD). */
+.stl-preview-backdrop{position:fixed;inset:0;z-index:56;display:none;align-items:center;justify-content:center;padding:16px;background:#060b14d9}
+.stl-preview-popup{display:flex;flex-direction:column;width:min(960px,100%);height:min(780px,94dvh);min-height:330px;border:1px solid #496078;border-radius:14px;background:#172233;box-shadow:0 25px 80px #000c;padding:16px;gap:10px}
+.stl-preview-header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.stl-preview-header h2{font-size:18px;margin:0}
+.stl-preview-header p{color:#b4c5d7;font-size:12px;margin:4px 0 0}
+.stl-preview-scene{flex:1;min-height:170px;position:relative;border:1px solid #344b64;border-radius:10px;background:#0b1320;overflow:hidden}
+.stl-preview-scene canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab;outline:none}
+.stl-preview-scene canvas:active{cursor:grabbing}
+.stl-preview-hint{position:absolute;bottom:9px;left:12px;color:#ccdaf0;font-size:11px;pointer-events:none;background:#0b162bbd;border-radius:6px;padding:5px 8px}
+.stl-preview-info{font-size:12px;color:#b8c9dd;line-height:1.5;min-height:22px}
+.stl-preview-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.stl-preview-actions button:last-child{background:#3579e5;border-color:#498af0;color:white}
+.stl-inline-error{display:none;color:#ffe0e0;background:#5a2731;border:1px solid #ae5d66;border-radius:7px;padding:8px 10px;margin:10px 0;font-size:12px;line-height:1.4}
+@media(max-width:570px){.stl-preview-popup{height:92dvh;padding:10px}.stl-preview-actions button{flex:1;padding:0 8px;min-width:0;font-size:11px}.stl-preview-hint{font-size:10px}}
+/* V2.0.29: ajuste vivo y medición de la malla STL en planta, sin tocar CAD original. */
+.stl-preview-popup{width:min(1160px,100%);height:min(900px,96dvh)}
+.stl-workarea{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:10px;flex:1;min-height:170px}
+.stl-workarea>.stl-preview-scene{min-height:250px}
+.stl-plan-panel{display:flex;flex-direction:column;gap:7px;min-width:0;min-height:200px}
+.stl-plan-head{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;align-items:center;color:#d9e9f6;font-size:12px}
+.stl-plan-head label{font-size:11px;display:flex;align-items:center;gap:5px}
+.stl-plan-panel canvas{flex:1;min-height:175px;height:100%;width:100%;display:block;background:#091524;border:1px solid #3b566d;border-radius:8px;cursor:crosshair;touch-action:none}
+.stl-plan-hint{color:#a6b9cd;font-size:11px;line-height:1.4}
+.stl-plan-hint button{padding:3px 6px;font-size:11px}
+.stl-measure-result{font-size:12px;min-height:20px;color:#f6da9a;line-height:1.4}
+.stl-offset-control{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:8px 10px;background:#0e1b2b;border:1px solid #37516b;border-radius:8px;font-size:12px}
+.stl-offset-control input[type=number]{width:94px;padding:6px;background:#0a1422;border:1px solid #54718a;color:#e5f7ff;border-radius:6px;font-size:15px}
+.stl-offset-control input[type=range]{flex:1;min-width:80px;accent-color:#45d4c9}
+.stl-offset-control button{padding:4px 9px}
+.stl-metrics{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;line-height:1.5;color:#dae6f5}
+.stl-metrics strong{color:#86eadf}
+.stl-change-status{font-size:11px;color:#ffcf8a}
+@media(max-width:760px){.stl-preview-popup{height:96dvh}.stl-workarea{grid-template-columns:1fr;grid-template-rows:minmax(150px,1fr) minmax(160px,1fr)}.stl-workarea>.stl-preview-scene{min-height:150px}.stl-plan-panel{min-height:160px}.stl-preview-header p{display:none}}
+
+/* V2.0.30.2 — Visores exactamente al 50 %, sin textos que desplacen controles.
+   Solo presentación: motor, geometría y exportadores sin cambios. */
+.stl-preview-backdrop{padding:8px}
+.stl-preview-popup{
+  position:relative;width:min(1600px,calc(100vw - 16px));
+  height:min(980px,calc(100dvh - 16px));max-height:calc(100dvh - 16px);
+  min-height:0;gap:8px;padding:12px;
+}
+.stl-workarea{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr);gap:10px;flex:1 1 0;
+  min-width:0;min-height:0;
+}
+.stl-workarea>.stl-preview-scene,
+.stl-workarea>.stl-plan-panel{
+  min-width:0;min-height:0;width:100%;height:100%;
+  overflow:hidden;border:1px solid #344b64;border-radius:10px;
+}
+.stl-plan-panel{display:block;position:relative;background:#091524}
+.stl-plan-panel #stlMeasureCanvas{
+  position:absolute;inset:0;width:100%;height:100%;min-height:0;
+  border:0;border-radius:0;display:block;cursor:crosshair;
+}
+.stl-plan-head{
+  position:absolute;z-index:2;left:10px;right:10px;top:8px;
+  display:flex;justify-content:space-between;flex-wrap:wrap;
+  align-items:center;gap:5px 12px;padding:6px 8px;
+  border-radius:7px;background:#0b1929e8;
+}
+.stl-plan-footer{
+  position:absolute;z-index:2;left:10px;right:10px;bottom:9px;
+  display:flex;justify-content:space-between;align-items:center;
+  gap:8px;flex-wrap:wrap;pointer-events:none;
+}
+.stl-plan-footer>*{pointer-events:auto}
+.stl-plan-hint{display:flex;align-items:center;gap:5px}
+.stl-plan-hint button{min-height:30px;padding:0 9px;font-size:11px}
+.stl-measure-result{
+  min-height:0;max-width:100%;padding:7px 9px;border-radius:6px;
+  background:#0c1b2ee8;color:#f6da9a;font-size:12px;line-height:1.25;
+  font-variant-numeric:tabular-nums;
+}
+/* Información accesible para lectores de pantalla, sin salto visual del deslizador. */
+.stl-preview-popup #stlChangeStatus,
+.stl-preview-popup #stlPreviewInfo{
+  position:absolute!important;width:1px!important;height:1px!important;
+  padding:0!important;margin:-1px!important;overflow:hidden!important;
+  clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important;
+}
+.stl-offset-control{min-width:0}
+.stl-offset-control input[type=range]{min-width:60px}
+.stl-preview-actions button:last-child,
+.stl-preview-actions button:last-child:hover:not(:disabled){
+  background:#242c39;border-color:#3a4658;color:#e5ebf5;
+}
+.stl-preview-actions button:last-child:hover:not(:disabled){
+  background:#303b4d;border-color:#55647a;
+}
+.stl-metrics{font-variant-numeric:tabular-nums}
+/* V2.0.30.4.2: cotas a todo el ancho, con Centrar vista debajo a la izquierda. */
+.stl-bottom-row{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;
+  grid-template-areas:"metrics metrics" "reset actions";
+  align-items:end;column-gap:12px;row-gap:8px;min-width:0;
+}
+.stl-bottom-row>.stl-metrics{
+  grid-area:metrics;display:flex;flex-wrap:wrap;align-items:center;
+  width:100%;min-width:0;gap:6px 18px;
+}
+.stl-bottom-row>.stl-metrics>span{white-space:nowrap}
+.stl-bottom-row>#stlPreviewReset{grid-area:reset;justify-self:start;margin:0}
+.stl-right-actions{grid-area:actions;display:flex;flex-direction:column;align-items:flex-end;gap:8px;min-width:0}
+.stl-right-actions .stl-preview-actions{justify-content:flex-end}
+@media(max-width:760px){
+  .stl-preview-popup{width:calc(100vw - 12px);height:calc(100dvh - 12px);max-height:calc(100dvh - 12px);padding:9px}
+  .stl-workarea{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr);gap:7px}
+  .stl-workarea>.stl-preview-scene,.stl-workarea>.stl-plan-panel{min-height:0}
+  .stl-plan-head{left:6px;right:6px;top:5px;font-size:11px;padding:4px 6px}
+  .stl-plan-head label{font-size:10px}
+  .stl-plan-footer{left:6px;right:6px;bottom:6px;gap:4px}
+  .stl-plan-hint button{min-height:25px;font-size:10px;padding:0 6px}
+  .stl-measure-result{font-size:10px;padding:5px 6px}
+  .stl-metrics{font-size:10px;gap:7px}
+  .stl-bottom-row{grid-template-columns:minmax(0,1fr);grid-template-areas:"metrics" "reset" "actions";gap:8px}
+  .stl-right-actions{align-items:stretch}
+  .stl-right-actions .stl-preview-actions{justify-content:stretch}
+}
+/* Selector compacto para medir geometría, sin alterar los paneles. */
+.stl-measure-result{white-space:pre-line;max-height:min(25vh,118px);overflow-y:auto}
+.stl-plan-head .stl-smart-mode{display:flex;align-items:center;gap:6px;color:#dde9f7}
+.stl-plan-head .stl-smart-mode select{min-width:0;max-width:160px;padding:4px 7px;border:1px solid #50647b;border-radius:6px;color:#e9f1f9;background:#202b3a;font-size:11px}
+@media(max-width:1000px){.stl-plan-head .stl-smart-mode select{max-width:132px;font-size:10px}}
+
+/* Corrección dimensional independiente X/Y. */
+.stl-dimensional-control{display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+ padding:6px 10px;background:#0e1b2b;border:1px solid #37516b;border-radius:8px;font-size:12px}
+.stl-dimensional-control label{display:flex;gap:6px;align-items:center}
+.stl-dimensional-control input{width:95px;padding:5px 6px;background:#0a1422;
+ border:1px solid #54718a;color:#e5f7ff;border-radius:6px;font-size:13px}
+.stl-dimensional-control button{padding:5px 9px}
+@media(max-width:760px){.stl-dimensional-control{gap:5px}.stl-dimensional-control input{width:74px}}
+/* V2.6: nuevos botones sin desplazar el resto de la barra. */
+#projectOpen,#projectSave{white-space:nowrap;padding-inline:10px}
+@media(max-width:1490px){.toolbar{height:auto;min-height:70px;flex-wrap:wrap;padding-block:7px}
+ .toolbar .buttons{flex-wrap:wrap;justify-content:flex-end;gap:5px}}
+@media(max-width:860px){.toolbar .buttons{justify-content:flex-start}.toolbar .brand{margin-right:0}}
+
+/* Ayuda actualizada para V2.6: bloques plegables, sin modificar el programa. */
+.help-dialog{width:min(790px,100%);max-height:min(92dvh,900px)}
+.help-body{padding-top:14px;padding-bottom:20px}
+.help-body .help-intro{margin:0 0 15px;color:#dce8f7;font-size:13px}
+.help-body .help-topic{border:1px solid #344c65;border-radius:9px;margin:8px 0;background:#122235;overflow:hidden}
+.help-body .help-topic[open]{border-color:#526d85;padding:0 0 11px}
+.help-body .help-topic>summary{display:list-item;list-style:disclosure-closed inside;padding:11px 13px;font-size:13px;color:#e7f1ff;font-weight:650;background:#1a2c41;cursor:pointer}
+.help-body .help-topic[open]>summary{list-style:disclosure-open inside;border-bottom:1px solid #344a60;margin-bottom:10px}
+.help-body .help-topic>p,.help-body .help-topic>ul,.help-body .help-topic>ol{margin:7px 16px 9px}
+.help-body .help-topic li{margin:6px 0;line-height:1.5}
+.help-body .help-topic ul,.help-body .help-topic ol{padding-left:20px}
+.help-body .help-caution{padding:9px 11px;border-left:3px solid #849ab4;background:#1a2938;border-radius:4px}
+.help-body .help-topic #avReviewDetails{margin:13px 16px 0}
+.help-body .help-topic #avReviewDetails[open]{padding-bottom:5px}
+@media(max-width:700px){.help-dialog{max-height:94dvh}.help-body .help-topic>summary{padding:9px}.help-body .help-topic>p,.help-body .help-topic>ul,.help-body .help-topic>ol{margin-left:10px;margin-right:10px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="toolbar">
+  <div class="brand"><div class="brand-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3h18v18H3zM7 7l3 5 4-3 4 7M6 18h12"/></svg></div><div><div class="brand-name">Vectorizador <span class="brand-version">V2.6</span></div><div class="brand-subtitle">Fotografía a CAD · DXF y STL</div></div></div>
+  <div class="buttons">
+    <button id="newBtn" title="Nuevo (Ctrl+N)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Nuevo</button>
+    <button id="cadToggle" class="cadToggle" style="display:none" title="Entrar o salir del editor CAD">Editar CAD</button>
+    <button id="projectOpen" type="button" title="Abrir un proyecto editable guardado">Abrir proyecto</button>
+    <button id="projectSave" type="button" disabled title="Guardar foto, geometría y ajustes para continuar después">Guardar proyecto</button>
+    <button id="openBtn" title="Buscar fotografía en el explorador (Ctrl+O)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V3m-5 5 5-5 5 5M4 16v4h16v-4"/></svg>Importar foto</button>
+    <button id="convertBtn" disabled>Vectorizar</button>
+    <button id="exportBtn" disabled>Exportar DXF original</button>
+    <button id="extrudeBtn" disabled title="Crear una pieza sólida a partir del plano y exportar STL en mm">Extruir STL</button>
+    <button id="helpBtn" type="button" title="Abrir guía de herramientas" aria-haspopup="dialog" aria-controls="helpBackdrop">Ayuda</button>
+  </div>
+
+</header>
+<main class="viewport" id="viewport">
+  <canvas id="view" aria-label="Vista 2D de fotografía y contornos"></canvas>
+  <div class="view-pill" id="viewPill">Foto original · vista 2D</div>
+  <nav class="cadbar" id="cadbar" aria-label="Herramientas de edición CAD" style="display:none">
+    <div class="cadbar-top">
+      <button id="cadUndo" title="Deshacer (Ctrl+Z)"><span>↶</span>Atrás</button>
+      <button id="cadRedo" title="Rehacer (Ctrl+Y)"><span>↷</span>Rehacer</button>
+      <button id="cadDelete" title="Eliminar geometría seleccionada (Supr)"><span>✕</span>Borrar</button>
+    </div>
+    <div class="cadbar-tools" id="cadbarTools">
+      <button data-cad-tool="select" title="Seleccionar varias entidades con clics y borrarlas juntas; mover y editar vértices"><span>↖</span>Elegir</button>
+      <button data-cad-tool="segment" title="Seleccionar tramos del contorno (clic para marcar/desmarcar)"><span class="goma-icono" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="m20 20H8"/><path d="M4.25 17.75a2 2 0 0 1 0-2.83l10.7-10.7a2 2 0 0 1 2.83 0l2 2a2 2 0 0 1 0 2.83L9.3 19.54a2 2 0 0 1-2.83 0z"/><path d="m9 11 6 6"/></svg></span>Tramo</button>
+      <button data-cad-tool="line" title="Dibujar línea con dos puntos"><span>╱</span>Línea</button>
+      <button data-cad-tool="circle" title="Dibujar círculo: centro y radio"><span>◯</span>Círculo</button>
+      <button data-cad-tool="arc" title="Arco de 3 puntos: primer extremo, segundo extremo, punto de paso"><span>⌒</span>Arco</button>
+      <button data-cad-tool="curve" title="Curva suave: inicio, control 1, control 2 y final (SPLINE CAD)"><span>⌁</span>Curva</button>
+      <button data-cad-tool="rectangle" title="Dibujar rectángulo: dos esquinas"><span>▢</span>Cuadrado</button>
+      <button data-cad-tool="pan" title="Mover el plano"><span>✥</span>Mover</button>
+      <button data-cad-tool="measure" title="Medir distancias, líneas, diámetros, arcos y contornos"><span>↔</span>Medir</button>
+      <hr id="cadbarInsertBefore">
+    </div>
+  </nav>
+  <div class="empty" id="empty"><div class="empty-symbol"><svg width="35" height="35" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="2"/><path d="m5 18 6-7 3 3 3-4 3 5"/></svg></div><h2>Ninguna fotografía cargada</h2><p>Haz clic en <strong>Importar foto</strong> o arrastra aquí una imagen JPG/PNG de una pieza plana sobre la plantilla A4.</p></div>
+  <div class="controls" id="controls" style="width:282px">
+    <div id="cadPanel" style="display:none">
+      <div class="control-title">Plano CAD</div>
+      <div class="cadPanelDetails">
+        <label for="cadPhotoVisible" style="display:flex;gap:7px;align-items:center"><input type="checkbox" id="cadPhotoVisible"> Mostrar fotografía debajo</label>
+        <label for="cadPhotoOpacity" style="margin-top:10px">Visibilidad de fotografía: <span id="cadPhotoPct">45 %</span></label>
+        <input id="cadPhotoOpacity" type="range" min="10" max="100" step="5" value="45" style="width:100%;accent-color:#458fff">
+        <div class="mini" id="cadPhotoInfo" hidden>Opcional: fotografía alineada al plano CAD, no incluida en el DXF.</div>
+      </div>
+      <div class="cadMetrics" aria-live="polite">
+      <div class="mini" id="cadSelection" style="margin:8px 0;color:#d5e3f6">Selecciona una geometría.</div>
+      </div>
+      <div id="cadCircleForm" class="cadPanelDetails" style="display:none">
+        <label for="cadDiameter" style="font-weight:650">Diámetro del círculo (<span id="cadDiameterUnit">mm</span>)</label>
+        <div class="cad-diameter-row">
+          <input type="number" id="cadDiameter" min="0.02" step="0.001" inputmode="decimal" aria-label="Diámetro del círculo">
+          <button type="button" id="cadApplyCircle">Aplicar Ø</button>
+        </div>
+        <!-- Coordenadas internas conservadas para compatibilidad del editor;
+             el centro solo se define con el ratón, no se muestra ni edita aquí. -->
+        <div hidden aria-hidden="true">
+          <input type="number" id="cadCX" step="0.001" tabindex="-1">
+          <input type="number" id="cadCY" step="0.001" tabindex="-1">
+        </div>
+      </div>
+      <div id="cadMeasurePanel" class="cadPanelDetails" style="display:none">
+        <label for="cadMeasureMode">Medición</label>
+        <select id="cadMeasureMode" style="width:100%;margin:6px 0 8px">
+          <option value="points">Distancia entre 2 puntos</option>
+          <option value="entity">Longitud / diámetro de entidad</option>
+        </select>
+        <div class="mini" id="cadMeasureResult" aria-live="polite">Marca dos puntos para medir.</div>
+        <div class="tools"><button id="cadMeasureClear">Nueva medición</button></div>
+      </div>
+      <div id="cadCompat" class="cadCompat" aria-hidden="true">
+        <div class="mini" id="cadMode"></div>
+        <div class="mini" id="cadJoinStatus"></div>
+        <div class="mini" id="cadUnit"></div>
+        <div class="mini" id="cadEntityCount"></div>
+      <div class="cadPanelDetails">
+        <b>Mover selección</b>
+        <div class="cad-property" style="margin-top:6px">
+          <label>Δ X<input type="number" id="cadMoveX" step="0.1" value="0"></label>
+          <label>Δ Y<input type="number" id="cadMoveY" step="0.1" value="0"></label>
+        </div><div class="tools"><button id="cadApplyMove">Aplicar desplazamiento</button></div>
+      </div>
+      <div class="tools"><button id="cadFitBtn">Encuadrar CAD</button><button id="cadResetBtn">Restaurar</button></div>
+
+      </div>
+    </div>
+    <div id="vectorPanel">
+    <div class="control-title">Vectorización 2D</div>
+    <label for="threshold">Contraste: <span id="thresholdNum">120</span></label>
+    <input type="range" min="70" max="170" step="5" value="120" id="threshold">
+    <label style="margin-top:8px"><input id="showOverlay" type="checkbox" checked> Mostrar contornos</label>
+    <label style="margin-top:6px"><input id="recoverHoles" type="checkbox" checked> <span title="Busca perforaciones pequeñas que el contraste normal puede pasar por alto. Revisa posibles reflejos.">Recuperar agujeros pequeños</span></label>
+    <div class="mini" hidden id="recoveryInfo" style="color:#9bbada">Ajuste conservador. Si detecta un reflejo como agujero, desmárcalo y recalcula.</div>
+    <label style="margin-top:6px"><input id="showBinary" type="checkbox"> Silueta blanco/negro</label>
+    <div class="tools"><button id="retryScale" title="Volver a detectar pieza y escalas">Recalcular auto</button></div>
+      <div class="cadCompat" aria-hidden="true" id="vectorCompat">
+    <div class="mini dim" id="dims">Sin vectorizar</div>
+    <div class="mini" id="geomInfo">Aún no se ha detectado geometría</div>
+    <div class="mini" id="scaleInfo">Escala pendiente</div><div class="mini" id="diagnosticInfo" role="status" style="margin-top:6px;color:#e4c78a"></div>
+    <details id="manualPanel" style="margin-top:11px">
+      <summary>Ajuste de escala (opcional)</summary>
+      <div class="mini">Solo si la foto no permite detectar ambas reglas o si necesitas corregir una medida real. Valores en píxeles por milímetro.</div>
+      <div class="triple-input" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <label for="manualX">Escala X<input id="manualX" type="number" min="0.1" max="999" step="0.001" placeholder="X px/mm" style="width:100%"></label>
+        <label for="manualY">Escala Y<input id="manualY" type="number" min="0.1" max="999" step="0.001" placeholder="Y px/mm" style="width:100%"></label>
+      </div>
+      <div class="tools"><button id="manualApply">Aplicar</button><button id="resetCal">Volver a automática</button></div>
+      <div class="mini" id="manualInfo">El ajuste manual anula temporalmente la corrección automática.</div>
+    </details>
+    <div style="margin-top:13px;border-top:1px solid #35445a;padding-top:11px"><b>Zona de pieza (opcional)</b></div>
+    <div class="tools"><button id="cropBtn">Delimitar</button><button id="clearCrop">Quitar zona</button></div>
+    <div class="mini" id="cropInfo">Solo si detecta otra mancha: marca dos esquinas alrededor de la pieza.</div>
+    <div class="mini" style="color:#e1c68c;margin-top:10px">Plantillas V2 y V2.1: corrigen perspectiva con 3 o 4 marcadores. Plantilla clásica: escala estimada. Verifica siempre la impresión y las cotas reales.</div>
+      </div>
+    </div>
+  </div>
+  <div class="error-toast" id="errorToast" role="alert"></div>
+  <div class="name-backdrop" id="fotoBackdrop" role="dialog" aria-modal="true" aria-labelledby="fotoHeading">
+    <div class="name-popup" style="width:min(660px,100%)">
+      <h3 id="fotoHeading">Fotos del programa</h3>
+      <p>Elige una imagen de <b>Archivos/Fotos</b> o añade una nueva desde tu equipo.</p>
+      <div class="foto-lista" id="fotoLista"></div>
+      <div class="foto-actions">
+        <button id="fotoRecargar">Actualizar</button>
+        <button id="fotoCarpeta">Abrir carpeta</button>
+        <button id="fotoAnadir" class="primary">Añadir imagen</button>
+        <button id="fotoCerrar">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</main>
+<div class="help-backdrop" id="helpBackdrop" role="dialog" aria-modal="true" aria-labelledby="helpHeading" aria-hidden="true">
+  <section class="help-dialog" tabindex="-1">
+    <div class="help-head"><h2 id="helpHeading">Ayuda · Vectorizador V2.6</h2><button id="helpClose" type="button" aria-label="Cerrar ayuda">Cerrar ✕</button></div>
+    <div class="help-body">
+      <p class="help-intro">Guía práctica para copiar una pieza física, comprobar sus medidas y obtener un STL de prueba y un DXF editable para Onshape.</p>
+      <details class="help-topic" open>
+        <summary>1. Proceso de trabajo recomendado</summary>
+        <ol>
+          <li><strong>Importar foto:</strong> fotografía la pieza plana sobre la plantilla A4 completa, con buena iluminación y evitando inclinaciones.</li>
+          <li><strong>Vectorizar:</strong> comprueba el contorno y los agujeros. Si hace falta, corrige la geometría en <strong>Editar CAD</strong>.</li>
+          <li><strong>Extruir STL → Vista previa 3D:</strong> mide y ajusta el <strong>ancho X, alto Y</strong> y el <strong>offset exterior</strong> utilizando la pieza física.</li>
+          <li><strong>Guardar STL:</strong> imprime una muestra para comprobar que reproduce bien la pieza.</li>
+          <li><strong>Guardar DXF ajustado:</strong> abre en Onshape la geometría que has comprobado y realiza allí los cambios del cliente.</li>
+        </ol>
+        <p><strong>Consejo:</strong> usa <strong>Guardar proyecto</strong> para conservar el trabajo editable antes de cerrar el programa.</p>
+      </details>
+      <details class="help-topic">
+        <summary>2. Fotografía, escala y vectorización</summary>
+        <ul>
+          <li><strong>Importar foto:</strong> elige una imagen JPG/PNG o arrástrala al área de trabajo. Puedes usar las fotos guardadas en el programa.</li>
+          <li><strong>Vectorizar:</strong> identifica contorno exterior, agujeros y ranuras. Comprueba el resultado sobre la fotografía.</li>
+          <li><strong>Contraste:</strong> modifica la detección; <strong>Recuperar agujeros pequeños</strong> intenta localizar perforaciones omitidas, pero debes revisar los posibles falsos positivos.</li>
+          <li><strong>Mostrar contornos</strong> y <strong>Comparar foto y contorno:</strong> controla la superposición; <strong>Silueta blanco/negro</strong> permite inspeccionar la detección.</li>
+          <li><strong>Recalcular auto:</strong> vuelve a detectar la geometría y la escala. Las plantillas con marcadores permiten corregir la perspectiva; con otras fotografías la escala puede ser aproximada.</li>
+          <li><strong>Ajuste de escala X/Y:</strong> si la detección falla, puedes introducir valores manuales en píxeles/mm. Es diferente de la corrección por medidas físicas de la vista STL.</li>
+          <li><strong>Delimitar:</strong> permite señalar el rectángulo de la pieza si aparecen otras manchas o elementos en la fotografía.</li>
+        </ul>
+        <p class="help-caution"><strong>Importante:</strong> comprueba siempre que el plano está calibrado en milímetros. Si exportas un DXF sin escala, sus coordenadas no representan dimensiones reales. Para generar STL se exige calibración métrica.</p>
+      </details>
+      <details class="help-topic">
+        <summary>3. Editor CAD: dibujo y correcciones</summary>
+        <p><strong>Editar CAD</strong> activa o cierra el editor. La foto de fondo es opcional y puedes ajustar su visibilidad.</p>
+        <ul>
+          <li><strong>Elegir:</strong> seleccionar, mover o editar entidades. <strong>Tramo:</strong> seleccionar tramos del contorno.</li>
+          <li><strong>Línea:</strong> dos puntos; <strong>Círculo:</strong> centro y radio, con posibilidad de fijar el diámetro mediante <strong>Aplicar Ø</strong>.</li>
+          <li><strong>Arco:</strong> dos extremos y un tercer punto de paso; <strong>Curva:</strong> puntos de inicio, controles y final (SPLINE).</li>
+          <li><strong>Cuadrado:</strong> dibujar un rectángulo mediante dos esquinas. <strong>Mover:</strong> desplazar el plano sin modificar las piezas.</li>
+          <li><strong>Medir:</strong> distancia entre dos puntos o longitud/diámetro de una entidad, según el modo elegido.</li>
+          <li><strong>Atrás / Rehacer / Borrar:</strong> deshacer, rehacer o eliminar la selección.</li>
+          <li><strong>Unir:</strong> combinar líneas, arcos o polilíneas abiertas con extremos coincidentes. <strong>Cerrar:</strong> cerrar una polilínea abierta seleccionada.</li>
+          <li><strong>Recortar:</strong> clic cerca del extremo a quitar y después en la recta límite. <strong>Prolongar:</strong> clic en la línea a alargar y después en el límite recto.</li>
+        </ul>
+        <p>Recortar y prolongar solo actúan sobre líneas independientes y extremos rectos compatibles; no deforman automáticamente contornos cerrados ni curvas.</p>
+        <p><strong>Verificar:</strong> examina posibles contornos abiertos, duplicados, huecos y cruces. Pulsa un aviso para localizarlo en el plano. Esta verificación no garantiza por sí sola que la pieza sea fabricable.</p>
+        <details id="avReviewDetails" open>
+          <summary>Verificación y tolerancia de unión</summary>
+          <label style="display:block;margin:10px 0">Tolerancia de unión (mm)
+            <input type="number" id="avJoinTol" value="0.08" min="0.001" max="0.5" step="0.01" aria-label="Tolerancia de unión en milímetros"></label>
+          <div id="avWarnings" aria-live="polite">Pulsa «Verificar» en el editor para generar el informe.</div>
+        </details>
+      </details>
+      <details class="help-topic">
+        <summary>4. Extrusión, corrección X/Y y offset</summary>
+        <p><strong>Extruir STL</strong> crea una pieza con base plana y grosor configurable entre <strong>1 y 3 mm</strong>. Requiere perfiles cerrados y escala real.</p>
+        <ul>
+          <li><strong>Medidas físicas de la pieza — Ancho X / Alto Y:</strong> escribe las dimensiones reales obtenidas con el calibre. Se corrige la escala de toda la geometría: contorno, posición de agujeros y ranuras. <strong>Restablecer X/Y</strong> recupera las cotas detectadas.</li>
+          <li><strong>Offset exterior:</strong> valor entre −5 y +5 mm. Un valor positivo amplía el borde exterior y uno negativo lo reduce; <strong>0 mm</strong> no aplica offset. Los agujeros no reciben este offset.</li>
+          <li><strong>Orden de aplicación:</strong> primero se corrige X/Y y después se aplica el offset exterior. Son dos operaciones distintas.</li>
+          <li>Con un contorno rectangular, <strong>+0,25 mm de offset</strong> puede sumar aproximadamente <strong>0,50 mm al ancho total</strong>; no confundas offset por lado con variación total.</li>
+        </ul>
+        <p class="help-caution"><strong>Atención:</strong> si X e Y se escalan con factores distintos, los círculos pueden convertirse en elipses. Comprueba siempre las cotas y los agujeros. Si el offset genera un contorno inválido, la exportación se bloquea.</p>
+      </details>
+      <details class="help-topic">
+        <summary>5. Vista 3D y plano de medición</summary>
+        <ul>
+          <li><strong>Vista 3D:</strong> arrastra para girar la pieza, usa la rueda para hacer zoom y <strong>Centrar vista</strong> para recuperar el encuadre.</li>
+          <li><strong>Plano de medición:</strong> muestra la vista superior del mismo STL. Activa <strong>Contorno original discontinuo</strong> para compararlo con el ajustado; <strong>Centrar plano</strong> restaura su encuadre.</li>
+          <li><strong>Medir → Puntos:</strong> selecciona dos puntos del contorno para leer la distancia, ΔX y ΔY. <strong>Nueva medida</strong> limpia la selección.</li>
+          <li><strong>Medir → Agujeros y ranuras:</strong> pulsa un hueco detectado para consultar diámetro o ancho/largo y posición de su centro. Selecciona dos huecos para calcular la distancia entre centros.</li>
+          <li><strong>Zoom del plano:</strong> rueda del ratón; para desplazar, mantén <strong>Mayús</strong> mientras arrastras.</li>
+        </ul>
+        <p class="help-caution">Las medidas inteligentes de agujeros y ranuras se calculan sobre el perfil triangulado del STL y son <strong>aproximaciones</strong>. Los huecos irregulares pueden no reconocerse como círculos o ranuras. No uses esas cotas como si fueran tolerancias de fabricación certificadas.</p>
+      </details>
+      <details class="help-topic">
+        <summary>6. Exportar STL y DXF: diferencias</summary>
+        <ul>
+          <li><strong>Exportar DXF original:</strong> desde la pantalla principal. Guarda el perfil obtenido o editado en CAD <strong>sin aplicar la corrección X/Y ni el offset de la vista STL</strong>.</li>
+          <li><strong>Guardar STL:</strong> desde la vista 3D. Exporta la geometría que estás viendo, con el grosor, la corrección X/Y y el offset utilizados.</li>
+          <li><strong>Guardar DXF ajustado:</strong> desde la misma vista 3D. Exporta el contorno ajustado para Onshape con las mismas cotas exteriores nominales del STL.</li>
+        </ul>
+        <p>Al cambiar un ajuste, espera a que termine de actualizarse la vista antes de exportar. El programa comprueba que el DXF ajustado corresponde al STL mostrado.</p>
+        <p><strong>Nota:</strong> el STL es una malla para impresión; el DXF es el plano para editar en CAD. Cuando una transformación lo requiera, algunas curvas pueden representarse mediante segmentos.</p>
+      </details>
+      <details class="help-topic">
+        <summary>7. Guardar y abrir proyectos editables (.vect)</summary>
+        <ul>
+          <li><strong>Guardar proyecto</strong> guarda un archivo <strong>.vect</strong> con la fotografía, vectorización, entidades CAD editables, calibración y ajustes de extrusión, offset y X/Y. También está disponible desde la vista 3D.</li>
+          <li><strong>Abrir proyecto</strong> recupera el trabajo para continuar: puedes editar el CAD, medir, corregir X/Y, variar el offset y volver a exportar.</li>
+          <li><strong>Ctrl + S</strong> guarda el proyecto. Si el navegador no permite elegir un archivo de destino directamente, el archivo .vect se descargará.</li>
+          <li>Antes de abrir otro proyecto, guarda los cambios actuales: el trabajo abierto se sustituye.</li>
+        </ul>
+        <p class="help-caution">El archivo <strong>.vect</strong> no es un DXF ni un STL: sirve para reanudar el trabajo editable. Guárdalo junto con las exportaciones finales del encargo. Abrirlo no modifica automáticamente los DXF o STL ya guardados.</p>
+      </details>
+      <details class="help-topic">
+        <summary>8. Atajos y solución de problemas</summary>
+        <ul>
+          <li><strong>Ctrl + N:</strong> nuevo trabajo. <strong>Ctrl + O:</strong> importar fotografía. <strong>Ctrl + S:</strong> guardar proyecto.</li>
+          <li>En el editor CAD: <strong>Ctrl + Z</strong> deshacer, <strong>Ctrl + Y</strong> rehacer y <strong>Supr</strong> borrar la selección.</li>
+          <li><strong>No aparece el STL:</strong> revisa que la escala sea real y que los contornos estén cerrados y no se crucen.</li>
+          <li><strong>Las medidas no coinciden:</strong> comprueba primero calibración y corrección X/Y; utiliza el offset solo para el contorno exterior.</li>
+          <li><strong>Un archivo no se abre:</strong> confirma que estás usando <strong>Iniciar.bat</strong> de esta misma versión y que el proyecto .vect está intacto. Un EXE antiguo no incorpora los parches de los archivos sueltos.</li>
+        </ul>
+      </details>
+      <h3>Último mensaje del editor</h3>
+      <div id="avMsg" role="status" aria-live="polite">Sin operaciones pendientes.</div>
+    </div>
+  </section>
+</div>
+<footer class="status"><span class="filename" id="filename">Sin archivo</span><div class="status-right"><span class="details" id="details">Esperando fotografía</span><span class="progress-num" id="progress">0 %</span><span class="build-tag" id="buildTag">Motor V2.6</span></div></footer>
+</div>
+<input id="fileInput" type="file" accept="image/jpeg,image/png" hidden>
+<input id="projectFileInput" type="file" accept=".vect,application/json" hidden>
+
+<div id="extrudeBackdrop" class="extrude-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="extrudeTitle">
+  <div class="extrude-popup">
+    <h2 id="extrudeTitle">Extruir pieza a STL</h2>
+    <p>Genera una pieza sólida en milímetros a partir de los contornos del plano actual. Los agujeros quedan vacíos.</p>
+    <label for="extrudeThickness">Grosor de la pieza (1–3 mm)</label>
+    <div class="extrude-number-row"><input id="extrudeThickness" type="number" value="2" min="1" max="3" step="0.1" inputmode="decimal" aria-label="Grosor de extrusión en milímetros"><span>mm</span></div>
+    <div class="extrude-range-row"><span>1 mm</span><input id="extrudeSlider" type="range" min="1" max="3" step="0.1" value="2" aria-label="Ajustar grosor"><span>3 mm</span></div>
+
+    <div class="extrude-holgura">
+      <label for="extrudeOffset">Offset exterior de la pieza (STL y DXF ajustado)</label>
+      <div class="extrude-number-row"><input id="extrudeOffset" type="number" value="0" min="-5" max="5" step="0.05" inputmode="decimal" aria-label="Offset exterior positivo o negativo en milímetros"><span>mm</span></div>
+      <p class="extrude-note">0 mm = contorno original. +0,50 mm añade 0,50 mm por lado (≈ +1 mm al ancho). −0,50 mm retira 0,50 mm por lado. Los agujeros y el DXF original no cambian. Podrás exportar un DXF ajustado con las medidas del STL. Si el offset destruye detalles o alcanza un agujero, no se exporta.</p>
+    </div>
+    <p class="extrude-note">Solo perfiles cerrados · base plana en Z = 0 · compatible con laminadores STL. Para editar después, conserva el DXF.</p>
+    <div id="extrudeError" class="stl-inline-error" role="alert"></div>
+    <div class="extrude-actions"><button id="extrudeCancel" type="button">Cancelar</button><button id="extrudeConfirm" type="button">Vista previa 3D</button></div>
+  </div>
+</div>
+<div id="stlPreviewBackdrop" class="stl-preview-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="stlPreviewTitle">
+  <div class="stl-preview-popup">
+    <div class="stl-preview-header"><div><h2 id="stlPreviewTitle">Vista previa 3D del STL</h2></div><button id="stlProjectSave" type="button" title="Guardar proyecto editable con las medidas actuales">Guardar proyecto</button></div>
+    <div class="stl-offset-control">
+      <label for="stlLiveOffset"><strong>Offset exterior:</strong></label>
+      <button id="stlOffsetLess" type="button" title="Reducir offset 0,05 mm">−</button>
+      <input id="stlLiveOffset" type="number" min="-5" max="5" step="0.05" value="0" aria-label="Offset exterior en milímetros; actualiza el STL automáticamente">mm
+      <button id="stlOffsetMore" type="button" title="Aumentar offset 0,05 mm">+</button>
+      <input id="stlOffsetSlider" type="range" min="-5" max="5" step="0.05" value="0" aria-label="Ajuste directo del offset en vista previa">
+      <button id="stlOffsetZero" type="button" title="Recuperar el contorno original">Restablecer 0</button>
+      <span id="stlChangeStatus" class="stl-change-status" role="status" aria-live="polite"></span>
+    </div>
+    <div class="stl-dimensional-control" aria-label="Corrección dimensional basada en medidas reales">
+      <strong>Medidas físicas de la pieza:</strong>
+      <label>Ancho X <input id="stlTargetWidth" type="number" min="0.01" max="20000" step="0.001" aria-label="Ancho X medido con calibre, en mm"> mm</label>
+      <label>Alto Y <input id="stlTargetHeight" type="number" min="0.01" max="20000" step="0.001" aria-label="Alto Y medido con calibre, en mm"> mm</label>
+      <button id="stlDimReset" type="button" title="Volver a las dimensiones detectadas inicialmente">Restablecer X/Y</button>
+    </div>
+    <div class="stl-workarea">
+      <div class="stl-preview-scene"><canvas id="stlPreviewCanvas" aria-label="Modelo STL tridimensional giratorio" tabindex="0"></canvas>
+        <span class="stl-preview-hint">Arrastra para girar · Rueda para zoom</span></div>
+      <div class="stl-plan-panel">
+        <canvas id="stlMeasureCanvas" aria-label="Vista superior del STL; selecciona dos puntos del contorno para medir" title="Dos clics para medir · Rueda para zoom · Mayús + arrastrar para mover" tabindex="0"></canvas>
+        <div class="stl-plan-head"><strong>Plano de medición (mm)</strong>
+          <label class="stl-smart-mode">Medir <select id="stlMeasureMode" aria-label="Modo de medición"><option value="puntos">Puntos</option><option value="agujeros">Agujeros y ranuras</option></select></label>
+          <label><input id="stlShowOriginal" type="checkbox" checked> Contorno original discontinuo</label></div>
+        <div class="stl-plan-footer">
+          <div id="stlMeasureResult" class="stl-measure-result" aria-live="polite">Elige el punto A.</div>
+          <div class="stl-plan-hint"><button id="stlMeasureClear" type="button" title="Elegir otros dos puntos">Nueva medida</button><button id="stlMeasureReset" type="button" title="Centrar la medición">Centrar plano</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="stl-bottom-row">
+      <div id="stlMetrics" class="stl-metrics" aria-live="polite"></div>
+      <button id="stlPreviewReset" type="button" title="Restablecer perspectiva y zoom">Centrar vista</button>
+      <div class="stl-right-actions">
+        <div id="stlPreviewInfo" class="stl-preview-info" aria-live="polite"></div>
+        <div id="stlPreviewError" class="stl-inline-error" role="alert"></div>
+        <div class="stl-preview-actions"><button id="stlPreviewBack" type="button">Volver a ajustes</button><button id="stlPreviewSave" type="button">Guardar STL</button><button id="stlPreviewSaveDXF" type="button">Guardar DXF ajustado</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/editor.js?version=2.6"></script>
+<script src="/visor_stl.js?version=2.6"></script>
+<script src="/medidor_stl.js?version=2.6"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const VERSION_UI='V2.6';
+let motorCompatible=false;
+async function verificarVersion(){try{const r=await fetch('/api/version',{cache:'no-store'});if(!r.ok)throw Error('No responde el servidor');const j=await r.json();if(j.version!==VERSION_UI)throw Error('Interfaz '+VERSION_UI+' y motor '+j.version);motorCompatible=true;$('buildTag').textContent='Motor '+j.version;buttons();}catch(e){motorCompatible=false;$('buildTag').textContent='Motor sin verificar';buttons();error('Versión incompatible o servidor antiguo: '+e.message+'; cierra esta pestaña y ejecuta Iniciar.bat.');}}
+const state={file:null,img:null,binary:null,vector:null,scale:null,manual:null,crop:null,
+  selectingCrop:false,cropPts:[],zoom:1,panX:0,panY:0,drag:false,last:null,busy:false};
+const cv=$('view'),ctx=cv.getContext('2d'),vp=$('viewport');
+function error(message){const el=$('errorToast');el.textContent=message;el.style.display='block';setTimeout(()=>{if(el.textContent===message)el.style.display='none'},8000)}
+function setProgress(p,s){$('progress').textContent=p+' %';if(s)$('details').textContent=s}
+function effective(){return state.manual||{x:state.scale?.px_mm_x??null,y:state.scale?.px_mm_y??null}}
+function ready(){const {x,y}=effective();return Number.isFinite(x)&&x>0&&Number.isFinite(y)&&y>0}
+function buttons(){$('projectSave').disabled=!motorCompatible||!state.img||state.busy;$('extrudeBtn').disabled=!motorCompatible||!state.vector||state.busy;$('cadToggle').disabled=!motorCompatible||!state.vector||state.busy;$('convertBtn').disabled=!motorCompatible||!state.img||state.busy;$('exportBtn').disabled=!motorCompatible||!state.vector||state.busy;$('retryScale').disabled=!motorCompatible||!state.img||state.busy}
+function resize(){const dpr=devicePixelRatio||1;cv.width=Math.round(vp.clientWidth*dpr);cv.height=Math.round(vp.clientHeight*dpr);redraw()}
+function fit(){if(cad.active){cadFit();return}state.zoom=1;state.panX=0;state.panY=0;redraw()}
+function factor(){return Math.min(cv.width/state.img.naturalWidth,cv.height/state.img.naturalHeight)*.96*state.zoom}
+function tr(){const dpr=devicePixelRatio||1,s=factor();return{s,ox:(cv.width-state.img.naturalWidth*s)/2+state.panX*dpr,oy:(cv.height-state.img.naturalHeight*s)/2+state.panY*dpr}}
+function photoPos(e){const r=cv.getBoundingClientRect(),dpr=devicePixelRatio||1,{s,ox,oy}=tr();return[((e.clientX-r.left)*dpr-ox)/s,((e.clientY-r.top)*dpr-oy)/s]}
+function redraw(){ctx.clearRect(0,0,cv.width,cv.height);if(cad.active){cadDraw();return}if(!state.img)return;
+ const {s,ox,oy}=tr();ctx.drawImage(($('showBinary').checked&&state.binary)?state.binary:state.img,ox,oy,state.img.naturalWidth*s,state.img.naturalHeight*s);
+ if(state.vector&&$('showOverlay').checked){ctx.save();ctx.translate(ox,oy);ctx.scale(s,s);ctx.lineWidth=Math.max(.7,2/s);
+  for(const loop of state.vector.contornos){const p=loop.puntos;if(!p.length)continue;
+   ctx.beginPath();if(loop.circulo){const {centro_px:c,radio_px:r}=loop.circulo;ctx.arc(c[0],c[1],r,0,Math.PI*2)}
+   else {ctx.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)ctx.lineTo(p[i][0],p[i][1]);ctx.closePath()}
+   ctx.globalAlpha=Number(document.getElementById('comparisonAlpha')?.value??100)/100;ctx.setLineDash([]);ctx.strokeStyle=loop.origen_deteccion==='recuperado'?'#65caff':loop.tipo==='interior'?'#ffbe67':'#39e390';ctx.stroke()
+  }ctx.restore()}
+ if(state.crop){ctx.save();ctx.setLineDash([10,6]);ctx.strokeStyle='#ffdb80';ctx.lineWidth=2;
+  const [x0,y0,x1,y1]=state.crop;ctx.strokeRect(ox+x0*s,oy+y0*s,(x1-x0)*s,(y1-y0)*s);ctx.restore()}
+ if(state.cropPts.length){ctx.save();ctx.strokeStyle='#ffda75';ctx.lineWidth=2;
+  for(const [x,y] of state.cropPts){ctx.beginPath();ctx.arc(ox+x*s,oy+y*s,6,0,2*Math.PI);ctx.stroke()}ctx.restore()}
+}
+function cropCancel(){state.selectingCrop=false;state.cropPts=[];cv.classList.remove('calibrating');redraw()}
+function reset(){window.VectorizadorProyectos?.reiniciar();cadDisable();state.file=null;state.img=null;state.binary=null;state.vector=null;state.scale=null;state.manual=null;state.crop=null;cropCancel();state.zoom=1;state.panX=0;state.panY=0;state.busy=false;
+ $('cadToggle').style.display='none';$('fileInput').value='';$('filename').textContent='Sin archivo';$('controls').style.display='none';$('cropInfo').textContent='Marca dos esquinas si hace falta.';$('empty').style.display='block';$('viewPill').textContent='Foto original · vista 2D';$('dims').textContent='Sin vectorizar';$('geomInfo').textContent='Aún no se ha detectado geometría';$('scaleInfo').textContent='Escala pendiente';$('diagnosticInfo').textContent='';$('manualPanel').open=false;$('threshold').value=120;$('thresholdNum').textContent='120';$('showBinary').checked=false;$('recoverHoles').checked=true;$('recoveryInfo').textContent='Ajuste conservador. Si detecta un reflejo como agujero, desmárcalo y recalcula.';setProgress(0,'Esperando fotografía');buttons();redraw()}
+async function guardarFotoLocal(file){
+ try{
+  const fd=new FormData();fd.append('archivo',file);
+  const r=await fetch('/api/fotos/guardar',{method:'POST',body:fd});
+  const data=await r.json();if(!r.ok)throw Error(data.detail||'No se pudo guardar');
+ }catch(e){console.warn('La fotografía no se ha archivado en Fotos:',e.message);$('diagnosticInfo').textContent='Aviso: foto cargada, pero no se pudo guardar en la carpeta Fotos ('+e.message+').';}
+}
+async function mostrarFotos(){
+ $('fotoBackdrop').style.display='flex';await listarFotos();
+}
+function cerrarFotos(){$('fotoBackdrop').style.display='none'}
+async function listarFotos(){
+ const lista=$('fotoLista');lista.textContent='Cargando fotografías...';
+ try{
+  const r=await fetch('/api/fotos/listar',{cache:'no-store'}),d=await r.json();
+  if(!r.ok)throw Error(d.detail||'No se puede consultar Fotos');
+  lista.textContent='';
+  if(!d.fotos.length){lista.textContent='La carpeta Fotos está vacía. Pulsa Añadir imagen.';return}
+  for(const nombre of d.fotos){
+   const button=document.createElement('button');button.className='foto-item';button.title=nombre;
+   const img=document.createElement('img');img.alt='';img.loading='lazy';img.src='/api/fotos/archivo/'+encodeURIComponent(nombre);
+   const label=document.createElement('span');label.textContent=nombre;
+   button.append(img,label);button.onclick=()=>elegirFotoGuardada(nombre);lista.appendChild(button);
+  }
+ }catch(e){lista.textContent='No se pueden mostrar las fotos: '+e.message}
+}
+async function elegirFotoGuardada(nombre){
+ try{
+  const r=await fetch('/api/fotos/archivo/'+encodeURIComponent(nombre));if(!r.ok)throw Error('No se pudo abrir '+nombre);
+  const blob=await r.blob(),tipo=/\.png$/i.test(nombre)?'image/png':'image/jpeg';
+  cerrarFotos();loadFile(new File([blob],nombre,{type:tipo}));
+ }catch(e){error(e.message)}
+}
+function loadFile(file){if(!file||!/^image\/(jpeg|png)$/.test(file.type)){error('Selecciona JPG o PNG.');return}reset();state.file=file;const url=URL.createObjectURL(file),im=new Image();im.onload=()=>{URL.revokeObjectURL(url);state.img=im;$('filename').textContent=file.name;$('empty').style.display='none';$('controls').style.display='block';setProgress(0,'Imagen cargada · pulsa Vectorizar');fit();buttons();guardarFotoLocal(file)};im.onerror=()=>error('No se puede abrir la imagen.');im.src=url}
+async function vectorizar(){if(!state.file||state.busy)return;
+ if(cad.dirty&&!confirm('Volver a vectorizar descartará las ediciones CAD. ¿Continuar?'))return;
+ cadDisable();state.busy=true;buttons();setProgress(18,'Detectando pieza y reglas automáticamente...');try{const fd=new FormData();fd.append('archivo',state.file);fd.append('umbral',$('threshold').value);fd.append('recuperar',$('recoverHoles').checked?'true':'false');if(state.crop)fd.append('recorte',JSON.stringify(state.crop));
+ const r=await fetch('/api/vectorizar',{method:'POST',body:fd});const d=await r.json();if(!r.ok)throw Error(d.detail||'No se puede vectorizar.');state.vector=d;state.scale=d.calibracion;state.manual=null;state.binary=null;if(d.silueta_png){const b=new Image();b.onload=()=>{state.binary=b;redraw()};b.src=d.silueta_png;}
+ $('viewPill').textContent='Contornos automáticos · DXF';$('cadToggle').style.display='block';$('cadToggle').textContent='Editar CAD';$('diagnosticInfo').textContent=d.diagnostico?.mensaje||'';const cs=d.contornos.filter(x=>x.circulo).length;const holes=d.contornos.filter(x=>x.tipo==='interior').length;
+ $('geomInfo').textContent=`${holes} orificio(s) · ${cs} círculo(s) CAD`;
+ $('recoveryInfo').textContent=d.agujeros_recuperados>0?`+ ${d.agujeros_recuperados} agujero(s) recuperado(s) · comprueba que no sean reflejos`:($('recoverHoles').checked?'No se han añadido agujeros adicionales.':'Recuperación desactivada: solo detección clásica.');
+ if(state.scale.px_mm_x)$('manualX').value=state.scale.px_mm_x.toFixed(4);if(state.scale.px_mm_y)$('manualY').value=state.scale.px_mm_y.toFixed(4);
+ setProgress(100,'Silueta y geometría CAD procesadas');updateScale();
+ redraw();if(typeof avActualizarVista==='function')avActualizarVista()}
+
+ catch(e){state.vector=null;$('diagnosticInfo').textContent='No se ha podido vectorizar: '+e.message+' Prueba otro contraste o delimita la pieza.';setProgress(0,'Error de vectorización');error(e.message)}finally{state.busy=false;buttons()}}
+function payload(){const {x,y}=effective();return {vector:state.vector,px_mm_x:x||1,px_mm_y:y||1,afin:state.manual?null:state.scale?.afin_automatica??null,proyectiva:state.manual?null:state.scale?.proyectiva_automatica??null}}
+let measuresId=0;
+async function measure(){const id=++measuresId;if(!state.vector||!ready())return;
+ try{const r=await fetch('/api/medidas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload())});const d=await r.json();if(id!==measuresId)return;if(!r.ok)throw Error(d.detail||'Medidas no disponibles');
+  $('dims').textContent=`Aprox.: ${d.dimensiones_mm[0].toFixed(2)} × ${d.dimensiones_mm[1].toFixed(2)} mm`;
+  $('geomInfo').textContent=`${d.contornos_exteriores} contorno(s) · ${d.arcos_cad||0} arco(s) CAD · ${d.ranuras_cad||0} ranura(s) CAD · ${d.agujeros_circulares} círculo(s) CAD · ${d.agujeros_polilinea} agujero(s) poligonal(es)`;
+ }catch(e){if(id===measuresId)$('dims').textContent='Escala pendiente: '+e.message}}
+function updateScale(){const s=state.scale,{x,y}=effective();if(state.manual){$('scaleInfo').textContent=`Ajuste manual · X ${x.toFixed(3)} / Y ${y.toFixed(3)} px/mm`}
+ else if(s?.proyectiva_automatica?.tipo==='aruco_a4_v2'&&s.estado==='detectada'){
+  const control=s.control_papel_a4;
+  $('scaleInfo').textContent=control?.estado==='corregida'
+   ?`✓ Plantilla ${s.plantilla||'V2'} · 4 marcadores · escala verificada con bordes A4 · mm`
+   :`✓ Plantilla ${s.plantilla||'V2'} · ${s.marcadores_encontrados}/4 marcadores · perspectiva corregida · mm (sin contraste independiente del A4)`;
+ }
+ else if(s?.estado==='detectada'){$('scaleInfo').textContent=`✓ Reglas detectadas automáticamente · ${s.calidad.eje_x.marcas_cm} marcas X y ${s.calidad.eje_y.marcas_cm} Y · escala local aproximada`}
+ else if(s?.estado==='estimada'){$('scaleInfo').textContent='⚠ '+(s.descripcion||'Escala orientativa. Verifica las cotas.')}
+ else{$('scaleInfo').textContent='⚠ La pieza está detectada, pero no se ha podido medir su escala. Exportación SIN CALIBRAR disponible; para medidas reales, muestra una hoja A4 completa o ajusta la escala.'}
+ if(state.vector&&ready())measure();else if(state.vector)$('dims').textContent='Sin calibrar · DXF en píxeles (NO mm)';buttons()}
+function cropStart(){if(cad.active){error('Cambia a Ver fotografía antes de delimitar.');return}if(!state.img)return;cropCancel();state.selectingCrop=true;cv.classList.add('calibrating');$('cropInfo').textContent='Marca la primera esquina del rectángulo alrededor de la pieza.'}
+function imgClick(p){if(!state.selectingCrop)return;state.cropPts.push(p);if(state.cropPts.length===2){const [a,b]=state.cropPts,rec=[Math.round(Math.min(a[0],b[0])),Math.round(Math.min(a[1],b[1])),Math.round(Math.max(a[0],b[0])),Math.round(Math.max(a[1],b[1]))];
+ if(rec[2]-rec[0]<25||rec[3]-rec[1]<25)error('Selecciona una zona más grande.');else{state.crop=rec;cadDisable();state.binary=null;state.vector=null;$('cadToggle').style.display='none';$('cropInfo').textContent='Zona delimitada. Pulsa Vectorizar de nuevo.';$('dims').textContent='Pendiente de vectorizar';buttons()}cropCancel()}
+ else {$('cropInfo').textContent='Marca la esquina opuesta.';redraw()}}
+function nombreSugeridoDXF(){
+ const base=(state.file?.name||'pieza').replace(/\.[^.]+$/,'').replace(/[<>:\"/\\|?*\x00-\x1f]/g,'_').replace(/[. ]+$/g,'')||'pieza';
+ return base.slice(0,68)+(cad.initialized&&cad.dirty?'_CAD_EDITADO':'_CAD')+'_V2_6'+(ready()?'':'_SIN_ESCALA')+'.dxf';
+}
+async function exportarComo(){
+ if(!motorCompatible){error('Motor no compatible. Reinicia Vectorizador.');return}
+ if(!state.vector||state.busy){error('Primero debes vectorizar una pieza.');return}
+ // Nunca enviar el vector automático si ya se abrió el editor; si hay un
+ // dibujo incompleto no exportar a escondidas la última versión confirmada.
+ if(cad.initialized&&(cad.draft||cad.drag)){
+  error('Tienes una edición CAD sin terminar. Completa la línea/arco/curva antes de exportar.');return;
+ }
+ if(cad.dirty&&!cad.initialized){error('No se encuentran las ediciones CAD. Vuelve a abrir el editor.');return}
+ if(cad.initialized&&!cad.entities.length){error('El plano editado está vacío.');return}
+ if(!ready()&&!confirm('ATENCIÓN: no se ha detectado escala. El DXF se guardará SIN CALIBRAR, en píxeles (NO milímetros). ¿Quieres continuar?'))return;
+ // Copia inmutable tomada en el mismo clic de exportación, aun después de salir del editor.
+ const editedEntities=cad.initialized?cadCopy(cad.entities):null;
+ const expectedType=editedEntities===null?'automatico':'editado';
+ const expectedCount=editedEntities===null?null:editedEntities.length;
+ let handle=null,filename=nombreSugeridoDXF();
+ if(typeof window.showSaveFilePicker==='function'){
+  try{
+   handle=await window.showSaveFilePicker({suggestedName:filename,types:[{description:'Plano DXF',accept:{'application/dxf':['.dxf']}}],excludeAcceptAllOption:true});
+   filename=handle.name;
+   if(!/\.dxf$/i.test(filename))filename+='.dxf';
+  }catch(e){if(e.name==='AbortError')return;error('No se pudo abrir Guardar como: '+e.message);return}
+ }else{
+  error('Si quieres elegir carpeta, activa «Preguntar dónde guardar cada archivo» en Descargas, o utiliza Chrome/Edge.');
+ }
+ state.busy=true;buttons();setProgress(55,expectedType==='editado'?'Guardando GEOMETRÍA CAD EDITADA...':'Generando DXF automático...');
+ try{
+  const requestBody={...payload(),nombre:filename,sin_escala:!ready(),
+    entidades_editadas:editedEntities,exigir_edicion:expectedType==='editado',guardar_copia:!handle};
+  const r=await fetch('/api/exportar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(requestBody)});
+  if(!r.ok){let d;try{d=await r.json()}catch{d={}}throw Error(d.detail||'No se pudo exportar')}
+  const exportedType=r.headers.get('X-Vectorizador-Tipo');
+  const exportedCount=r.headers.get('X-Vectorizador-Entidades');
+  const exportedVersion=r.headers.get('X-Vectorizador-Version');
+  if(exportedType!==expectedType||exportedVersion!==VERSION_UI||
+    (expectedCount!==null&&Number(exportedCount)!==expectedCount)){
+   throw Error('La exportación no coincide con el plano editado: no se ha guardado el archivo para evitar perder cambios. Reinicia Vectorizador.');
+  }
+  const blob=await r.blob();
+  if(!blob.size)throw Error('El DXF generado está vacío.');
+  if(handle){
+   const writable=await handle.createWritable();
+   try{await writable.write(blob);await writable.close()}catch(e){try{await writable.abort()}catch(_){}throw e}
+   setProgress(100,(expectedType==='editado'?'DXF EDITADO':'DXF automático')+' guardado: '+filename+' ('+(expectedCount??'auto')+' entidades CAD)');
+  }else{
+   const url=URL.createObjectURL(blob),a=document.createElement('a');
+   a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),10000);
+   setProgress(100,(expectedType==='editado'?'DXF EDITADO':'DXF automático')+' descargado: '+filename+' ('+(expectedCount??'auto')+' entidades CAD)');
+  }
+  if(expectedType==='editado')$('viewPill').textContent='DXF editado exportado · CAD';
+ }catch(e){error('No se pudo guardar el DXF: '+e.message);setProgress(0,'Error DXF')}
+ finally{state.busy=false;buttons()}
+}
+
+
+// V2.0.25: primero construir y MOSTRAR el STL real, guardar solo tras confirmar.
+const extrudeBackdrop=$('extrudeBackdrop'),stlPreviewBackdrop=$('stlPreviewBackdrop');
+// Cotas de agujeros y ranuras a partir de los bordes reales del STL previsualizado.
+// Medidas de la malla triangulada exportable; la corrección X/Y es nominal.
+function avisoMedicionInteligente(seleccionados,huecos){
+ const el=$('stlMeasureResult');
+ const modo=$('stlMeasureMode')?.value;
+ if(modo!=='agujeros')return;
+ if(!huecos.length){el.textContent='No se han identificado huecos cerrados en este STL.';return;}
+ if(!seleccionados.length){
+   const n=huecos.filter(x=>x.tipo==='circulo').length,m=huecos.filter(x=>x.tipo==='ranura').length;
+   el.textContent='Selecciona un agujero o ranura (≈ STL) · '+n+' circulares · '+m+' ranuras.';
+   return;
+ }
+ const desc=h=>{
+   if(h.tipo==='libre'){
+     const xx=h.puntos.map(p=>p[0]),yy=h.puntos.map(p=>p[1]);
+     const ancho=Math.max(...xx)-Math.min(...xx),alto=Math.max(...yy)-Math.min(...yy);
+     return 'Hueco '+h.id+' irregular: caja '+ancho.toFixed(3)+' × '+alto.toFixed(3)+' mm (sin centro fiable).';
+   }
+   const centro=' · centro X '+h.centro[0].toFixed(3)+' / Y '+h.centro[1].toFixed(3)+' mm';
+   return h.tipo==='circulo'?'Hueco '+h.id+': Ø ≈ '+h.diametro.toFixed(3)+' mm'+centro:
+     'Ranura '+h.id+': ancho ≈ '+h.ancho.toFixed(3)+' mm · largo ≈ '+h.largo.toFixed(3)+' mm'+centro;
+ };
+ let t=seleccionados.map(desc).join('\n');
+ if(seleccionados.length===2&&seleccionados.every(h=>h.centro)){
+   const [a,b]=seleccionados.map(h=>h.centro),dx=b[0]-a[0],dy=b[1]-a[1];
+   t+='\nDistancia entre centros: ≈ '+Math.hypot(dx,dy).toFixed(3)+' mm (ΔX '+Math.abs(dx).toFixed(3)+' · ΔY '+Math.abs(dy).toFixed(3)+')';
+ }
+ el.textContent=t;
+}
+let stlVista=null,stlRender=null,stlMedidor=null,stlOrigenBuffer=null,stlBaseDims=null;
+let stlCambioRevision=0,stlCambioTimer=null,stlCambioAbort=null,stlGuardando=false;
+function avisoSTL(id,mensaje){const el=$(id);el.textContent=mensaje;el.style.display=mensaje?'block':'none';}
+function cerrarExtrusion(){if(state.busy)return;extrudeBackdrop.style.display='none';avisoSTL('extrudeError','');}
+function abrirExtrusion(){
+ if(!state.vector||state.busy){error('Primero vectoriza una pieza.');return}
+ if(!ready()){error('Para imprimir un STL hace falta calibración real en milímetros.');return}
+ if(cad.initialized&&(cad.draft||cad.drag)){error('Termina la edición CAD en curso antes de extruir.');return}
+ if(cad.initialized&&!cad.entities.length){error('El plano editado está vacío.');return}
+ avisoSTL('extrudeError','');extrudeBackdrop.style.display='flex';$('extrudeThickness').focus();$('extrudeThickness').select();
+}
+$('extrudeBtn').onclick=abrirExtrusion;
+$('extrudeCancel').onclick=cerrarExtrusion;
+extrudeBackdrop.addEventListener('click',e=>{if(e.target===extrudeBackdrop)cerrarExtrusion()});
+$('extrudeSlider').oninput=e=>{$('extrudeThickness').value=e.target.value};
+$('extrudeThickness').oninput=e=>{const n=Number(e.target.value);if(n>=1&&n<=3)$('extrudeSlider').value=String(n)};
+function volverVistaSTL(){
+ if(state.busy)return;
+ cancelarCambioOffset();stlMedidor?.destruir();stlMedidor=null;stlOrigenBuffer=null;stlBaseDims=null;
+ stlRender?.destruir();stlRender=null;stlVista=null;
+ stlPreviewBackdrop.style.display='none';stlPreviewBackdrop.setAttribute('aria-hidden','true');
+ avisoSTL('stlPreviewError','');extrudeBackdrop.style.display='flex';$('extrudeConfirm').focus();
+}
+function cerrarVistaSTL(){
+ cancelarCambioOffset();stlMedidor?.destruir();stlMedidor=null;stlOrigenBuffer=null;stlBaseDims=null;
+ stlRender?.destruir();stlRender=null;stlVista=null;
+ stlPreviewBackdrop.style.display='none';stlPreviewBackdrop.setAttribute('aria-hidden','true');
+ avisoSTL('stlPreviewError','');
+}
+$('stlPreviewBack').onclick=volverVistaSTL;
+$('stlPreviewReset').onclick=()=>stlRender?.reset();
+// Evitar atajos CAD/Nuevo cuando hay un diálogo STL activo.
+window.addEventListener('keydown',e=>{
+ const vista=stlPreviewBackdrop.style.display==='flex',ajustes=extrudeBackdrop.style.display==='flex';
+ if(!vista&&!ajustes)return;
+ if(e.key==='Escape'&&!state.busy){e.preventDefault();e.stopImmediatePropagation();if(vista)volverVistaSTL();else cerrarExtrusion();return;}
+ if((e.ctrlKey||e.metaKey)&&['n','o','z','y'].includes(e.key.toLowerCase())){e.preventDefault();e.stopImmediatePropagation();}
+},true);
+function validarCabecerasSTL(r,req,nTriangulos){
+ const h=r.headers;
+ if(h.get('X-Vectorizador-Version')!==VERSION_UI ||
+    h.get('X-Vectorizador-Tipo')!==req.tipo ||
+    Number(h.get('X-Vectorizador-Grosor'))!==req.grosor ||
+    Number(h.get('X-Vectorizador-Holgura-Diametro'))!==req.holgura ||
+    h.get('X-Vectorizador-Precision-STL')!==req.precision ||
+    Number(h.get('X-Vectorizador-Offset-Exterior-MM'))!==req.offset ||
+    Number(h.get('X-Vectorizador-Entidades'))!==req.numEntidades && req.numEntidades!==null ||
+    nTriangulos!==null && Number(h.get('X-Vectorizador-Triangulos'))!==nTriangulos ||
+    !Number.isFinite(Number(h.get('X-Vectorizador-Ancho'))) ||
+    !Number.isFinite(Number(h.get('X-Vectorizador-Alto'))) ||
+    !/^[a-f0-9]{64}$/.test(h.get('X-Vectorizador-STL-SHA256')||'')){
+    throw Error('El STL generado no corresponde al CAD o a los ajustes actuales. No se guardará.');
+ }
+}
+function prepararSolicitudSTL(){
+ const grosor=Number($('extrudeThickness').value),holgura=0;
+ const precision='normal';
+ const offset=Number($('extrudeOffset').value);
+ if($('extrudeThickness').value.trim()===''||!Number.isFinite(grosor)||grosor<1||grosor>3)throw Error('Introduce un grosor entre 1 y 3 mm.');
+ if($('extrudeOffset').value.trim()===''||!Number.isFinite(offset)||offset< -5||offset>5)throw Error('El offset exterior debe estar entre -5 y +5 mm.');
+ if(!motorCompatible||!state.vector||state.busy)throw Error('Primero vectoriza una pieza.');
+ if(!ready())throw Error('Falta calibración métrica; no se puede exportar STL en mm.');
+ if(cad.initialized&&(cad.draft||cad.drag))throw Error('Termina la geometría que estás dibujando.');
+ if(cad.initialized&&!cad.entities.length)throw Error('No hay entidades CAD para extruir.');
+ const entities=cad.initialized?cadCopy(cad.entities):null;
+ const tipo=entities===null?'automatico':'editado';
+ const nombre=nombreSugeridoDXF().replace(/\.dxf$/i,'')+'_g'+String(grosor).replace('.','_')+'mm'+(offset?'_offset'+(offset>0?'mas':'menos')+String(Math.abs(offset)).replace('.','_')+'mm':'')+'.stl';
+ const body={...payload(),nombre,sin_escala:false,entidades_editadas:entities,
+   exigir_edicion:tipo==='editado',guardar_copia:false,grosor,compensacion_agujeros:holgura,precision_stl:precision,offset_exterior:offset,objetivo_ancho_mm:null,objetivo_alto_mm:null};
+ return {body,tipo,numEntidades:entities===null?null:entities.length,nombre,grosor,holgura,precision,offset};
+}
+async function solicitarSTL(body,signal){
+ const r=await fetch('/api/exportar-stl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal});
+ if(!r.ok){let d;try{d=await r.json()}catch{}throw Error(d?.detail||'Error al construir STL')}
+ return r;
+}
+async function prepararVistaSTL(){
+ avisoSTL('extrudeError','');
+ let req;
+ try{req=prepararSolicitudSTL()}catch(e){avisoSTL('extrudeError',e.message);return}
+ state.busy=true;buttons();$('extrudeConfirm').disabled=true;setProgress(48,'Validando y construyendo STL para vista previa...');
+ try{
+  const r=await solicitarSTL(req.body);
+  validarCabecerasSTL(r,req,null);
+  const blob=await r.blob();
+  if(blob.size<134)throw Error('STL vacío; se ha cancelado la vista previa.');
+  const buffer=await blob.arrayBuffer();
+  extrudeBackdrop.style.display='none';stlPreviewBackdrop.style.display='flex';stlPreviewBackdrop.setAttribute('aria-hidden','false');
+  try{stlRender=window.VectorizadorVisorSTL.abrir($('stlPreviewCanvas'),buffer);}
+  catch(e){stlPreviewBackdrop.style.display='none';stlPreviewBackdrop.setAttribute('aria-hidden','true');extrudeBackdrop.style.display='flex';throw e}
+  validarCabecerasSTL(r,req,stlRender.triangulos);
+  const d=stlRender.medidas;
+  const ancho=Number(r.headers.get('X-Vectorizador-Ancho')),
+        alto=Number(r.headers.get('X-Vectorizador-Alto'));
+  if(Math.abs(d[0]-ancho)>0.03||Math.abs(d[1]-alto)>0.03||Math.abs(d[2]-req.grosor)>0.001){
+    volverVistaSTL();throw Error('Dimensiones STL inconsistentes con el cálculo. Exportación cancelada.');
+  }
+  let bufferOriginal=buffer;
+  if(req.offset!==0){
+    const baseReq={...req,offset:0},baseBody={...req.body,offset_exterior:0,guardar_copia:false};
+    const originalResponse=await solicitarSTL(baseBody);
+    validarCabecerasSTL(originalResponse,baseReq,null);
+    bufferOriginal=await originalResponse.arrayBuffer();
+  }
+  stlOrigenBuffer=bufferOriginal;
+  stlMedidor=window.VectorizadorMedidorSTL.abrir($('stlMeasureCanvas'));
+  stlMedidor.onHole=avisoMedicionInteligente;
+  stlMedidor.cambiarModo($('stlMeasureMode').value);
+  stlMedidor.onMeasure=puntos=>{
+    if(puntos.length<2){$('stlMeasureResult').textContent=puntos.length?'Punto A seleccionado. Elige el punto B.':'Elige el punto A.';return;}
+    const [a,b]=puntos,dx=Math.abs(a[0]-b[0]),dy=Math.abs(a[1]-b[1]);
+    $('stlMeasureResult').textContent='Distancia '+Math.hypot(dx,dy).toFixed(3)+' mm · ΔX '+dx.toFixed(3)+' mm · ΔY '+dy.toFixed(3)+' mm';
+  };
+  const medidas=stlMedidor.cambiar(bufferOriginal,buffer);
+  stlBaseDims=medidas.original.medidas.slice();
+  $('stlTargetWidth').value=stlBaseDims[0].toFixed(3);
+  $('stlTargetHeight').value=stlBaseDims[1].toFixed(3);
+  stlVista={...req,blob,triangulos:stlRender.triangulos,sha256:r.headers.get('X-Vectorizador-STL-SHA256'),nombreSinOffset:req.nombre.replace(/_offset(?:mas|menos)[0-9_]+mm(?=\.stl$)/,''),medidasOriginal:medidas.original.medidas};
+  $('stlLiveOffset').value=String(req.offset);$('stlOffsetSlider').value=String(req.offset);
+  if(window.VectorizadorProyectos)window.VectorizadorProyectos.alAbrirVista();
+  $('stlChangeStatus').textContent='Dimensiones del STL actualizadas';
+  $('stlShowOriginal').checked=true;
+  mostrarComparativaSTL();
+  $('stlPreviewInfo').textContent=ancho.toFixed(2)+' × '+alto.toFixed(2)+' × '+req.grosor.toFixed(2)+
+   ' mm · '+stlRender.triangulos.toLocaleString('es-ES')+' triángulos · offset '+(req.offset>0?'+':'')+req.offset.toFixed(2)+' mm';
+  $('stlPreviewSaveDXF').disabled=false;$('stlPreviewSave').focus();setProgress(100,'Vista 3D y medición listas. STL y DXF ajustado disponibles.');
+ }catch(e){avisoSTL('extrudeError',e.message);setProgress(0,'No se pudo preparar la vista STL');
+    if(!stlVista){stlRender?.destruir();stlRender=null;
+      stlPreviewBackdrop.style.display='none';stlPreviewBackdrop.setAttribute('aria-hidden','true');extrudeBackdrop.style.display='flex';}}
+ finally{state.busy=false;buttons();$('extrudeConfirm').disabled=false;}
+}
+// Los dos visores proceden de la MISMA malla que se guardará.
+function mostrarComparativaSTL(){
+ if(!stlVista)return;
+ const a=stlVista.medidasOriginal, b=stlRender.medidas;
+ const diferencia=(v)=> (v>=0?'+':'')+v.toFixed(3);
+ $('stlMetrics').innerHTML='<span>Original: <strong>'+a[0].toFixed(3)+' × '+a[1].toFixed(3)+' mm</strong></span>'+ 
+  '<span>Ajustada: <strong>'+b[0].toFixed(3)+' × '+b[1].toFixed(3)+' mm</strong></span>'+ 
+  '<span>Variación: <strong>Δ ancho '+diferencia(b[0]-a[0])+' · Δ alto '+diferencia(b[1]-a[1])+' mm</strong></span>';
+}
+function cancelarCambioOffset(){
+ stlCambioRevision++;clearTimeout(stlCambioTimer);stlCambioTimer=null;
+ if(stlCambioAbort){stlCambioAbort.abort();stlCambioAbort=null;state.busy=false;buttons();$('stlPreviewBack').disabled=false;}
+}
+function objetivosVista(){
+ if(!stlBaseDims)throw Error('No se han calculado las medidas originales.');
+ const campos=[$('stlTargetWidth'),$('stlTargetHeight')];
+ const valores=campos.map((input,i)=>{
+  const texto=input.value.trim(),v=Number(texto);
+  if(texto===''||!Number.isFinite(v)||v<=0||v>20000)throw Error('Introduce medidas reales X/Y positivas (máximo 20000 mm).');
+  const factor=v/stlBaseDims[i];
+  if(factor<.1||factor>10)throw Error('La corrección X/Y supera el factor 10: revisa la escala inicial.');
+  return Math.abs(v-stlBaseDims[i])<.00055?null:v;
+ });
+ return valores;
+}
+function offsetConNombre(req,valor){
+ const root=req.nombreSinOffset||req.nombre.replace(/_offset(?:mas|menos)[0-9_]+mm(?=\.stl$)/,'');
+ const suf=valor?'_offset'+(valor>0?'mas':'menos')+String(Math.abs(valor)).replace('.','_')+'mm':'';
+ const [ancho,alto]=objetivosVista();
+ const nombre=root.replace(/\.stl$/i,(ancho!==null||alto!==null?'_XY':'')+suf+'.stl');
+ return {...req,offset:valor,nombre,objetivoAncho:ancho,objetivoAlto:alto,
+  body:{...req.body,offset_exterior:valor,objetivo_ancho_mm:ancho,objetivo_alto_mm:alto,nombre,guardar_copia:false}};
+}
+async function aplicarOffsetVista(valor){
+ if(!stlVista||stlPreviewBackdrop.style.display!=='flex')return;
+ if(!Number.isFinite(valor)||valor< -5||valor>5){$('stlChangeStatus').textContent='Introduce un offset de −5 a +5 mm.';$('stlPreviewSave').disabled=true;$('stlPreviewSaveDXF').disabled=true;return}
+ let req;try{req=offsetConNombre(stlVista,valor)}catch(e){avisoSTL('stlPreviewError',e.message);return}
+ cancelarCambioOffset();const revision=stlCambioRevision;
+ stlCambioAbort=new AbortController();const signal=stlCambioAbort.signal;
+ state.busy=true;buttons();$('stlPreviewSave').disabled=true;$('stlPreviewSaveDXF').disabled=true;$('stlPreviewBack').disabled=true;
+ $('stlChangeStatus').textContent='Actualizando STL y cotas…';avisoSTL('stlPreviewError','');
+ try{
+  let r=await solicitarSTL(req.body,signal);validarCabecerasSTL(r,req,null);
+  const blob=await r.blob(),buffer=await blob.arrayBuffer();
+  if(revision!==stlCambioRevision)return;
+  const antes=stlRender;
+  // El medidor valida y extrae las aristas de este mismo STL ANTES de sustituir el visor.
+  const nuevaForma=window.VectorizadorMedidorSTL.extraerPerfil(buffer);
+  const ancho=Number(r.headers.get('X-Vectorizador-Ancho')),alto=Number(r.headers.get('X-Vectorizador-Alto'));
+  if(Math.abs(nuevaForma.medidas[0]-ancho)>.03||Math.abs(nuevaForma.medidas[1]-alto)>.03||Math.abs(nuevaForma.medidas[2]-req.grosor)>.001)
+    throw Error('Las dimensiones del STL no coinciden con el motor.');
+  antes?.destruir();stlRender=null;
+  stlRender=window.VectorizadorVisorSTL.abrir($('stlPreviewCanvas'),buffer);
+  validarCabecerasSTL(r,req,stlRender.triangulos);
+  stlMedidor.cambiar(null,buffer);
+  stlVista={...req,blob,triangulos:stlRender.triangulos,sha256:r.headers.get('X-Vectorizador-STL-SHA256')};
+  $('extrudeOffset').value=String(valor);
+  mostrarComparativaSTL();
+  $('stlPreviewInfo').textContent=ancho.toFixed(2)+' × '+alto.toFixed(2)+' × '+req.grosor.toFixed(2)+' mm · '+
+   stlRender.triangulos.toLocaleString('es-ES')+' triángulos · offset '+(valor>0?'+':'')+valor.toFixed(2)+' mm';
+  $('stlChangeStatus').textContent='Actualizado: mide o guarda esta versión.';
+  $('stlPreviewSave').disabled=false;$('stlPreviewSaveDXF').disabled=false;
+ }catch(e){if(revision===stlCambioRevision&&e.name!=='AbortError'){
+    avisoSTL('stlPreviewError','No se ha aplicado este offset: '+e.message+' Ajusta el valor antes de guardar.');
+    $('stlChangeStatus').textContent='Offset no válido. No se permite exportar la versión anterior.';
+  }}finally{if(revision===stlCambioRevision){state.busy=false;buttons();$('stlPreviewBack').disabled=false;stlCambioAbort=null;}}
+}
+function programarOffsetVista(valor){
+ if(!stlVista||stlGuardando)return;
+ cancelarCambioOffset();
+ $('stlPreviewSave').disabled=true;$('stlPreviewSaveDXF').disabled=true;
+ if(!Number.isFinite(valor)||valor< -5||valor>5){$('stlChangeStatus').textContent='Offset fuera del rango −5 a +5 mm.';return}
+ $('stlChangeStatus').textContent='Pendiente de actualizar…';
+ stlCambioTimer=setTimeout(()=>aplicarOffsetVista(valor),280);
+}
+$('stlLiveOffset').addEventListener('input',()=>{
+ const value=$('stlLiveOffset').value.trim();
+ const n=value===''?NaN:Number(value);
+ if(Number.isFinite(n))$('stlOffsetSlider').value=String(n);
+ programarOffsetVista(n);
+});
+$('stlOffsetSlider').addEventListener('input',e=>{
+ const n=Number(e.target.value);$('stlLiveOffset').value=String(n);programarOffsetVista(n);
+});
+function desplazarOffset(d){
+ const n=Math.max(-5,Math.min(5,Math.round((Number($('stlLiveOffset').value)+d)*100)/100));
+ $('stlLiveOffset').value=String(n);$('stlOffsetSlider').value=String(n);programarOffsetVista(n);
+}
+$('stlOffsetLess').onclick=()=>desplazarOffset(-.05);
+$('stlOffsetMore').onclick=()=>desplazarOffset(.05);
+$('stlOffsetZero').onclick=()=>{
+ $('stlLiveOffset').value='0';$('stlOffsetSlider').value='0';programarOffsetVista(0);
+};
+function cambiarObjetivosVista(){
+ programarOffsetVista(Number($('stlLiveOffset').value));
+}
+$('stlTargetWidth').addEventListener('input',cambiarObjetivosVista);
+$('stlTargetHeight').addEventListener('input',cambiarObjetivosVista);
+$('stlDimReset').onclick=()=>{
+ if(!stlBaseDims)return;
+ $('stlTargetWidth').value=stlBaseDims[0].toFixed(3);
+ $('stlTargetHeight').value=stlBaseDims[1].toFixed(3);
+ cambiarObjetivosVista();
+};
+
+$('stlMeasureMode').onchange=()=>stlMedidor?.cambiarModo($('stlMeasureMode').value);
+$('stlMeasureClear').onclick=()=>stlMedidor?.limpiar();
+$('stlMeasureReset').onclick=()=>stlMedidor?.reset();
+$('stlShowOriginal').onchange=e=>stlMedidor?.mostrarOriginal(e.target.checked);
+
+$('extrudeConfirm').onclick=prepararVistaSTL;
+// No se ejecuta ningún selector de destino antes de que el usuario vea la malla.
+async function guardarSTLPrevisualizado(){
+ if(!stlVista||!stlRender||state.busy||stlGuardando||stlCambioTimer||stlCambioAbort||$('stlPreviewSave').disabled)return;
+ stlGuardando=true;
+ avisoSTL('stlPreviewError','');
+ const prev=stlVista;
+ if(JSON.stringify(objetivosVista())!==JSON.stringify([prev.objetivoAncho??null,prev.objetivoAlto??null]))return;
+ let handle=null,nombre=prev.nombre;
+ if(typeof window.showSaveFilePicker==='function'){
+  try{handle=await window.showSaveFilePicker({suggestedName:nombre,
+    types:[{description:'Malla STL para impresión 3D',accept:{'model/stl':['.stl']}}],excludeAcceptAllOption:true});
+    nombre=handle.name;if(!/\.stl$/i.test(nombre))nombre+='.stl';
+  }catch(e){stlGuardando=false;if(e.name==='AbortError')return;avisoSTL('stlPreviewError','No se pudo elegir dónde guardar: '+e.message);return}
+ }
+ state.busy=true;buttons();$('stlPreviewSave').disabled=true;$('stlPreviewSaveDXF').disabled=true;$('stlPreviewBack').disabled=true;
+ setProgress(70,'Guardando la malla STL previsualizada...');
+ try{
+  if(handle){
+   const out=await handle.createWritable();
+   try{await out.write(prev.blob);await out.close()}
+   catch(e){try{await out.abort()}catch{}throw e}
+  }else{
+   // Conserva la copia en Archivos/STL al no disponer del selector nativo.
+   // Se comprueba byte a byte que el recálculo archivado sea el STL mostrado.
+   const body={...prev.body,guardar_copia:true,sha256_stl_esperado:prev.sha256};
+   // El servidor compara el SHA256 ANTES de escribir en Archivos/STL.
+   const r=await solicitarSTL(body);
+   validarCabecerasSTL(r,prev,prev.triangulos);
+   if(r.headers.get('X-Vectorizador-STL-SHA256')!==prev.sha256)throw Error('El STL archivado no coincide con la vista previa.');
+   const archivado=await r.blob();
+   if(archivado.size!==prev.blob.size)throw Error('La malla archivada es diferente de la vista. No se descargará.');
+   const p=new Uint8Array(await prev.blob.arrayBuffer()),q=new Uint8Array(await archivado.arrayBuffer());
+   for(let i=0;i<p.length;i++)if(p[i]!==q[i])throw Error('El STL archivado difiere de la vista previa. No se descargará.');
+   const url=URL.createObjectURL(prev.blob),a=document.createElement('a');
+   a.href=url;a.download=nombre;document.body.appendChild(a);a.click();a.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),10000);
+  }
+  $('stlChangeStatus').textContent='STL guardado. Puedes guardar también el DXF ajustado.';setProgress(100,'STL guardado: '+nombre+' · '+prev.grosor+' mm de grosor'+(prev.holgura?' · holgura +'+prev.holgura+' mm':'')+' · offset '+(prev.offset>0?'+':'')+prev.offset+' mm');
+ }catch(e){avisoSTL('stlPreviewError',e.message);setProgress(0,'No se guardó el STL');}
+ finally{stlGuardando=false;state.busy=false;buttons();$('stlPreviewSave').disabled=false;$('stlPreviewSaveDXF').disabled=false;$('stlPreviewBack').disabled=false;}
+}
+$('stlPreviewSave').onclick=guardarSTLPrevisualizado;
+
+// V2.0.30. Este archivo DXF usa el mismo offset que el STL validado arriba.
+// El botón principal "Exportar DXF original" nunca utiliza este endpoint.
+async function guardarDXFAjustado(){
+ if(!stlVista||!stlRender||state.busy||stlGuardando||stlCambioTimer||stlCambioAbort||$('stlPreviewSaveDXF').disabled)return;
+ const prev=stlVista;
+ const actual=Number($('stlLiveOffset').value);
+ if($('stlLiveOffset').value.trim()===''||!Number.isFinite(actual)||actual!==prev.offset ||
+    JSON.stringify(objetivosVista())!==JSON.stringify([prev.objetivoAncho??null,prev.objetivoAlto??null])){
+  avisoSTL('stlPreviewError','Actualiza la vista previa antes de exportar el DXF.');return;
+ }
+ stlGuardando=true;
+ $('stlPreviewSave').disabled=true;$('stlPreviewSaveDXF').disabled=true;$('stlPreviewBack').disabled=true;
+ avisoSTL('stlPreviewError','');
+ let filename=nombreSugeridoDXF().replace(/\.dxf$/i,'')+(prev.objetivoAncho!==null&&prev.objetivoAncho!==undefined||prev.objetivoAlto!==null&&prev.objetivoAlto!==undefined?'_XY':'')+(prev.offset?'_offset'+(prev.offset>0?'mas':'menos')+String(Math.abs(prev.offset)).replace('.','_')+'mm':'')+'_AJUSTADO.dxf',handle=null;
+ try{
+  if(typeof window.showSaveFilePicker==='function'){
+   try{handle=await window.showSaveFilePicker({suggestedName:filename,
+       types:[{description:'Plano DXF ajustado',accept:{'application/dxf':['.dxf']}}],excludeAcceptAllOption:true});
+       filename=handle.name;if(!/\.dxf$/i.test(filename))filename+='.dxf';}
+   catch(e){if(e.name==='AbortError')return;throw e}
+  }
+  if(!stlVista||stlVista.sha256!==prev.sha256||Number($('stlLiveOffset').value)!==prev.offset ||
+     JSON.stringify(objetivosVista())!==JSON.stringify([prev.objetivoAncho??null,prev.objetivoAlto??null]))
+    throw Error('El offset de la vista previa ha cambiado. No se exportará una versión antigua.');
+  state.busy=true;buttons();setProgress(72,'Preparando DXF ajustado con el mismo offset del STL...');
+  const body={...prev.body,nombre:filename,guardar_copia:!handle,sha256_stl_esperado:prev.sha256};
+  const r=await fetch('/api/exportar-dxf-ajustado',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){let d;try{d=await r.json()}catch{}throw Error(d?.detail||'Error al construir DXF ajustado')}
+  if(r.headers.get('X-Vectorizador-Version')!==VERSION_UI ||
+     r.headers.get('X-Vectorizador-Tipo')!==prev.tipo ||
+     r.headers.get('X-Vectorizador-STL-SHA256')!==prev.sha256 ||
+     Number(r.headers.get('X-Vectorizador-Offset-Exterior-MM'))!==prev.offset ||
+     Math.abs(Number(r.headers.get('X-Vectorizador-Ancho'))-stlRender.medidas[0])>0.001 ||
+     Math.abs(Number(r.headers.get('X-Vectorizador-Alto'))-stlRender.medidas[1])>0.001)
+     throw Error('El DXF ajustado no corresponde a la geometría STL que estás midiendo.');
+  const blob=await r.blob();if(!blob.size)throw Error('El DXF ajustado está vacío.');
+  if(handle){
+    const out=await handle.createWritable();
+    try{await out.write(blob);await out.close()}catch(e){try{await out.abort()}catch{}throw e}
+  }else{
+    const u=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),10000);
+  }
+  $('stlChangeStatus').textContent='DXF ajustado guardado. El DXF original sigue intacto.';
+  setProgress(100,'DXF ajustado guardado: '+filename+' · offset '+(prev.offset>=0?'+':'')+prev.offset.toFixed(2)+' mm');
+ }catch(e){avisoSTL('stlPreviewError','No se guardó el DXF ajustado: '+e.message);setProgress(0,'Error DXF ajustado');}
+ finally{stlGuardando=false;state.busy=false;buttons();$('stlPreviewSave').disabled=false;$('stlPreviewSaveDXF').disabled=false;$('stlPreviewBack').disabled=false;}
+}
+$('stlPreviewSaveDXF').onclick=guardarDXFAjustado;
+
+
+for(const b of document.querySelectorAll('[data-cad-tool]'))b.onclick=()=>cadSetTool(b.dataset.cadTool);
+
+// Ayuda a demanda: no invade el panel CAD ni bloquea las herramientas al cerrarse.
+const helpBackdrop=$('helpBackdrop');
+function abrirAyuda(){helpBackdrop.style.display='flex';helpBackdrop.setAttribute('aria-hidden','false');$('helpClose').focus()}
+function cerrarAyuda(){helpBackdrop.style.display='none';helpBackdrop.setAttribute('aria-hidden','true');$('helpBtn').focus()}
+$('helpBtn').onclick=abrirAyuda;
+$('helpClose').onclick=cerrarAyuda;
+helpBackdrop.addEventListener('pointerdown',e=>{if(e.target===helpBackdrop)cerrarAyuda()});
+window.addEventListener('keydown',e=>{if(helpBackdrop.style.display==='flex'&&e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();cerrarAyuda()}},true);
+
+$('cadToggle').onclick=()=>{if(cad.active)cadSalir();else cadIniciar()};
+$('cadPhotoVisible').onchange=e=>cadFondoActivar(e.target.checked);
+$('cadPhotoOpacity').oninput=e=>{cad.bg.opacity=Number(e.target.value)/100;$('cadPhotoPct').textContent=e.target.value+' %';redraw()};$('cadUndo').onclick=cadDeshacer;$('cadRedo').onclick=cadRehacer;
+$('cadDelete').onclick=cadBorrar;$('cadResetBtn').onclick=cadRestaurar;
+$('cadFitBtn').onclick=cadFit;$('cadApplyCircle').onclick=cadAplicarCirculo;$('cadDiameter').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();cadAplicarCirculo()}});
+$('cadApplyMove').onclick=cadAplicarMover;
+$('cadMeasureMode').onchange=cadMedirCambiarModo;$('cadMeasureClear').onclick=()=>cadMeasureReset();
+async function abrirCarpeta(tipo){
+ try{
+  const r=await fetch('/api/carpetas/'+tipo+'/abrir',{method:'POST'}),d=await r.json();
+  if(!r.ok)throw Error(d.detail||'No se pudo abrir la carpeta');
+ }catch(e){error('No se pudo abrir la carpeta '+tipo+': '+e.message)}
+}
+
+$('fotoCerrar').onclick=cerrarFotos;$('fotoRecargar').onclick=listarFotos;
+$('fotoCarpeta').onclick=()=>abrirCarpeta('fotos');
+$('fotoAnadir').onclick=()=>$('fileInput').click();
+$('newBtn').onclick=reset;$('openBtn').onclick=()=>{$('fileInput').value='';$('fileInput').click()};$('fileInput').onchange=e=>{cerrarFotos();loadFile(e.target.files[0])};$('convertBtn').onclick=vectorizar;$('exportBtn').onclick=exportarComo;$('retryScale').onclick=vectorizar;
+$('threshold').onchange=()=>{if(cad.dirty&&!confirm('Cambiar contraste descartará las ediciones. ¿Continuar?'))return;cadDisable();$('cadToggle').style.display='none';state.binary=null;state.vector=null;buttons();redraw();$('dims').textContent='Pulsa Vectorizar para aplicar el contraste';setProgress(0,'Cambios pendientes')};$('threshold').oninput=()=>{$('thresholdNum').textContent=$('threshold').value};$('showOverlay').onchange=redraw;$('showBinary').onchange=redraw;$('recoverHoles').onchange=()=>{if(state.file)vectorizar()};
+$('manualApply').onclick=async()=>{const x=Number($('manualX').value),y=Number($('manualY').value);if(!Number.isFinite(x)||!Number.isFinite(y)||x<=.1||y<=.1||x>=1000||y>=1000){error('Introduce las escalas X e Y en px/mm, mayores que 0,1.');return}if(cad.dirty&&!confirm('Recalibrar descartará los cambios del editor CAD. ¿Continuar?'))return;state.manual={x,y};cadDisable();$('cadToggle').style.display=state.vector?'block':'none';updateScale();redraw()};
+$('resetCal').onclick=async()=>{if(cad.dirty&&!confirm('Recalibrar descartará las ediciones CAD. ¿Continuar?'))return;state.manual=null;cadDisable();$('cadToggle').style.display=state.vector?'block':'none';updateScale();redraw()};
+$('cropBtn').onclick=cropStart;$('clearCrop').onclick=()=>{state.crop=null;cadDisable();cropCancel();state.binary=null;state.vector=null;$('cadToggle').style.display='none';buttons();redraw();$('cropInfo').textContent='Zona retirada. Pulsa Vectorizar.';$('dims').textContent='Pendiente de vectorizar'};
+cv.addEventListener('pointerdown',e=>{if(cad.active){cadScreenDown(e);return}if(!state.img)return;if(state.selectingCrop){imgClick(photoPos(e));return}state.drag=true;state.last={x:e.clientX,y:e.clientY};cv.setPointerCapture(e.pointerId);cv.classList.add('dragging')});
+cv.addEventListener('pointermove',e=>{if(cad.active){cadScreenMove(e);return}if(!state.drag)return;state.panX+=e.clientX-state.last.x;state.panY+=e.clientY-state.last.y;state.last={x:e.clientX,y:e.clientY};redraw()});
+cv.addEventListener('pointerup',()=>{if(cad.active){cadScreenUp();return}state.drag=false;cv.classList.remove('dragging')});cv.addEventListener('pointercancel',()=>{if(cad.active){cadScreenUp();return}state.drag=false;cv.classList.remove('dragging')});
+cv.addEventListener('wheel',e=>{if(cad.active){e.preventDefault();cadWheel(e);return}if(!state.img)return;e.preventDefault();state.zoom=Math.min(24,Math.max(.3,state.zoom*(e.deltaY>0?.9:1.1)));redraw()},{passive:false});
+window.addEventListener('keydown',e=>{if(cadKey(e))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='o'){e.preventDefault();$('fileInput').value='';$('fileInput').click()}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='n'){e.preventDefault();reset()}if(e.key.toLowerCase()==='f'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName))fit();if(e.key==='Escape'){if($('fotoBackdrop').style.display==='flex'){cerrarFotos();return}cropCancel()}});
+vp.addEventListener('dragover',e=>e.preventDefault());vp.addEventListener('drop',e=>{e.preventDefault();if(e.dataTransfer.files.length)loadFile(e.dataTransfer.files[0])});
+window.addEventListener('resize',resize);resize();reset();verificarVersion();
+</script><script src="/mejoras.js?version=2.6"></script><script src="/proyectos.js?version=2.6"></script></body></html>

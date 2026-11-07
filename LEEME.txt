@@ -1,0 +1,44 @@
+VECTORIZADOR V2.6 — VERSION COMPLETA DEFINITIVA
+==================================================
+Este ZIP es el proyecto completo e independiente, no un parche y NO incluye un EXE Windows ya compilado.
+Conserva el ZIP sin modificar como punto de restauracion.
+
+INSTALAR EN WINDOWS
+1. Descomprime TODA la carpeta Vectorizador_V2_6 en una ubicacion propia.
+2. Ejecuta Instalar_Entorno.bat la primera vez (requiere Python 3.10+ y conexion a Internet).
+3. Ejecuta Iniciar.bat para abrir la interfaz en el navegador.
+4. Comprueba Vectorizador V2.6 en la cabecera y Motor V2.6 en el pie.
+   Si aparece otra version, cierra las instancias antiguas y recarga con Ctrl+F5.
+
+INSTALAR EN LINUX
+Ejecuta bash Instalar_Entorno.sh y luego bash Iniciar.sh con Python 3.10+ instalado.
+
+VERSION PORTABLE DE WINDOWS (OPCIONAL)
+CREAR_EXE_WINDOWS.bat compila el programa mediante PyInstaller EN WINDOWS.
+El ZIP no contiene un exe compilado. Para esta modalidad los trabajos personales
+se guardan en %LOCALAPPDATA%\Vectorizador\Archivos, distinto de la carpeta fuente.
+
+FUNCIONES CONSOLIDADAS
+- Foto de pieza plana sobre A4, deteccion de escala, vectorizacion y editor CAD 2D.
+- Exportacion DXF original; STL extrusionado con vista previa 3D.
+- Medicion por puntos o medicion inteligente de agujeros y ranuras.
+- Correccion dimensional X/Y segun medidas reales y offset exterior medible.
+- Guardado de STL y DXF ajustado con perfil exterior coherente.
+- Guardar/Abrir proyectos .vect; se recuperan la foto, CAD y parametros para seguir editando.
+- Ayuda actualizada integrada en 8 secciones.
+- Sin herramienta de redondeo, sin selector de holgura ni de precision geometrica.
+
+CONSERVAR TRABAJOS AL SUSTITUIR LA VERSION OFICIAL
+1. Haz copia de tu anterior Ver_oficial (y de tus proyectos .vect) primero.
+2. Prueba V2.6 desde la carpeta nueva antes de eliminar o renombrar nada.
+3. Si trabajabas desde los scripts, copia manualmente tus carpetas Fotos, DXF,
+   STL e Historial desde la carpeta Archivos anterior, con el programa cerrado.
+4. Si utilizabas el EXE, comprueba tambien %LOCALAPPDATA%\Vectorizador\Archivos.
+   Nunca borres archivos personales ni combines a ciegas motores de versiones antiguas.
+5. Cuando hayas confirmado las funciones en tu PC, puedes considerar V2.6 oficial.
+
+NOTAS
+La concordancia dimensional en STL y DXF es nominal y no sustituye la validacion
+fisica de la impresion. Los ajustes X/Y no corrigen por si solos errores de forma
+originados por una mala imagen. El EXE y la impresion real deben comprobarse en Windows.
+Los .vect V2.5.3 siguen siendo legibles; se mantiene el formato de proyecto VECT1.

@@ -1,0 +1,9 @@
+VECTORIZADOR V2.6 — COPIA PARA REPOSITORIO PUBLICO
+=================================================
+Fotografias JPEG excluidas: 13.
+Los DXF historicos y las dos imagenes de prueba SIMULADA se conservan.
+El motor Python, scripts, interfaz y plantillas originales estan intactos.
+MANIFIESTO_SHA256.txt se ha filtrado para excluir las fotografias ausentes.
+README.md y .gitignore se han adaptado a la publicacion publica.
+El EXE y el instalador estan en el archivo RAR recibido aparte, NO en este ZIP.
+Conserva el ZIP original y el RAR del instalador como copias privadas.
