@@ -33,6 +33,22 @@ class DiagnosticoSTLTest(unittest.TestCase):
             construir_stl(entidades, 2.5)
         self.assertEqual(len(entidades), 3)
 
+    def test_reparacion_experimental_conserva_cad(self):
+        entidades = [exterior(), agujero('cruza', 2, 25, 4),
+                     agujero('ruido', 60, 30, 0.031275)]
+        original = [dict(e) for e in entidades]
+        data, meta = construir_stl(entidades, 2.5, reparacion_prueba=True)
+        self.assertGreater(len(data), 84)
+        self.assertEqual(meta['grosor_mm'], 2.5)
+        self.assertEqual(len(meta['reparaciones_prueba']), 2)
+        self.assertEqual(entidades, original)
+
+    def test_estricto_sigue_rechazando_esos_mismos_errores(self):
+        entidades = [exterior(), agujero('cruza', 2, 25, 4),
+                     agujero('ruido', 60, 30, 0.031275)]
+        with self.assertRaisesRegex(ValueError, 'Geometría STL inválida'):
+            construir_stl(entidades, 2.5)
+
     def test_contornos_duplicados_no_entran_en_bucle(self):
         entidades = [exterior(), agujero('duplicado-a', 25, 25, 4),
                      agujero('duplicado-b', 25, 25, 4)]
