@@ -111,12 +111,12 @@ def _poligonos_solidos(entidades, error_cuerda=ERROR_CUERDA, simplificacion=.005
             identificador=entidad.get('id', f'entidad-{indice}')
             tipo=entidad.get('tipo', 'desconocido')
             if tipo=='circle':
-                detalle=(f\"círculo con centro ({entidad['cx']:.3f}, \"
-                         f\"{entidad['cy']:.3f}) mm y radio {entidad['radio']:.4f} mm\")
+                detalle=(f"círculo con centro ({entidad['cx']:.3f}, "
+                         f"{entidad['cy']:.3f}) mm y radio {entidad['radio']:.4f} mm")
             else:
-                detalle=f\"perfil {tipo}\"
+                detalle=f"perfil {tipo}"
             raise ValueError(
-                f\"Entidad {indice} ({identificador}; {detalle}): {exc} \"
+                f"Entidad {indice} ({identificador}; {detalle}): {exc} "
                 'Revisa o elimina el elemento en el editor 2D antes de extruir. '
                 'No se ha modificado la geometría original.'
             ) from exc
