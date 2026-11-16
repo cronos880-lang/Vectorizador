@@ -38,9 +38,17 @@ class DiagnosticoSTLTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'El agujero 2 .*fuera.*está fuera'):
             construir_stl(entidades, 2.5)
 
+    def test_informa_varios_errores_en_una_sola_revision(self):
+        entidades = [exterior(), agujero('cruza', 2, 25, 4),
+                     agujero('ruido', 60, 30, 0.031275)]
+        with self.assertRaises(ValueError) as ex:
+            construir_stl(entidades, 2.5)
+        self.assertIn('Entidad 3', str(ex.exception))
+        self.assertIn('el agujero 2 sobresale', str(ex.exception))
+
     def test_agujero_que_cruza_borde_identifica_entidades(self):
         entidades = [exterior(), agujero('cerca-del-borde', 2, 25, 4)]
-        with self.assertRaisesRegex(ValueError, 'Contornos 1 y 2.*se cruzan o tocan'):
+        with self.assertRaisesRegex(ValueError, 'Contornos 1 y 2.*el agujero 2 sobresale'):
             construir_stl(entidades, 2.5)
 
 
