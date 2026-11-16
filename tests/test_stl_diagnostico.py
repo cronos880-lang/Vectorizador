@@ -33,6 +33,12 @@ class DiagnosticoSTLTest(unittest.TestCase):
             construir_stl(entidades, 2.5)
         self.assertEqual(len(entidades), 3)
 
+    def test_contornos_duplicados_no_entran_en_bucle(self):
+        entidades = [exterior(), agujero('duplicado-a', 25, 25, 4),
+                     agujero('duplicado-b', 25, 25, 4)]
+        with self.assertRaisesRegex(ValueError, 'Contornos 2 y 3 duplicados'):
+            construir_stl(entidades, 2.5)
+
     def test_agujero_fuera_no_se_convierte_en_segundo_solido(self):
         entidades = [exterior(), agujero('fuera', 65, 25, 3)]
         with self.assertRaisesRegex(ValueError, 'El agujero 2 .*fuera.*está fuera'):
