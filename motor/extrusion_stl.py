@@ -89,7 +89,8 @@ def _perfil(entidad, error_cuerda=ERROR_CUERDA, simplificacion=.005):
     poly=Polygon(compact)
     if not poly.is_valid:
         raise ValueError('Un contorno se cruza a sí mismo o contiene vértices inválidos. Revísalo con Verificar.')
-    if poly.area < .01:raise ValueError('Una geometría es demasiado pequeña para extruirla correctamente.')
+    if poly.area < .01:
+        raise ValueError('La superficie es inferior a 0,01 mm²; puede ser un artefacto de la detección óptica.')
     # Reduce puntos espurios por fragmentación óptica sin desplazar el perfil > 0.005 mm.
     poly=poly.simplify(simplificacion,preserve_topology=True)
     if not isinstance(poly,Polygon) or not poly.is_valid or poly.area<.01:
@@ -100,7 +101,25 @@ def _perfil(entidad, error_cuerda=ERROR_CUERDA, simplificacion=.005):
 def _poligonos_solidos(entidades, error_cuerda=ERROR_CUERDA, simplificacion=.005):
     validar_entidades(entidades)
     if not entidades:raise ValueError('El editor CAD está vacío.')
-    loops=[_perfil(e,error_cuerda,simplificacion) for e in entidades]
+    # No omitimos ni alteramos perfiles automáticamente: una detección óptica
+    # puede ser un agujero real. Informar la entidad permite corregirla en CAD.
+    loops=[]
+    for indice, entidad in enumerate(entidades, 1):
+        try:
+            loops.append(_perfil(entidad,error_cuerda,simplificacion))
+        except ValueError as exc:
+            identificador=entidad.get('id', f'entidad-{indice}')
+            tipo=entidad.get('tipo', 'desconocido')
+            if tipo=='circle':
+                detalle=(f\"círculo con centro ({entidad['cx']:.3f}, \"
+                         f\"{entidad['cy']:.3f}) mm y radio {entidad['radio']:.4f} mm\")
+            else:
+                detalle=f\"perfil {tipo}\"
+            raise ValueError(
+                f\"Entidad {indice} ({identificador}; {detalle}): {exc} \"
+                'Revisa o elimina el elemento en el editor 2D antes de extruir. '
+                'No se ha modificado la geometría original.'
+            ) from exc
     if sum(len(poly.exterior.coords) for poly in loops)>MAX_PUNTOS:
         raise ValueError('Demasiados puntos para generar un STL seguro.')
     parents=[None]*len(loops)
@@ -111,7 +130,12 @@ def _poligonos_solidos(entidades, error_cuerda=ERROR_CUERDA, simplificacion=.005
             if other.contains(poly):
                 containing.append(j)
             elif not poly.contains(other) and not poly.disjoint(other):
-                raise ValueError('Hay contornos solapados o que se tocan. Corrígelos antes de extruir.')
+                raise ValueError(
+                    f'Contornos {i+1} y {j+1} ({entidades[i].get("id", "sin-id")} / '
+                    f'{entidades[j].get("id", "sin-id")}) se cruzan o tocan: '
+                    'uno de los agujeros puede sobresalir del exterior. '
+                    'Revisa los perfiles en el editor 2D; no se han desplazado ni recortado.'
+                )
         if containing:parents[i]=min(containing,key=lambda j:loops[j].area)
     def depth(i):
         n=0
