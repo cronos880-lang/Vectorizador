@@ -784,6 +784,8 @@ body:has(#cadbar[style*="flex"]) .avFloatStatus{left:170px}
       <div class="extrude-number-row"><input id="extrudeOffset" type="number" value="0" min="-5" max="5" step="0.05" inputmode="decimal" aria-label="Offset exterior positivo o negativo en milímetros"><span>mm</span></div>
       <p class="extrude-note">0 mm = contorno original. +0,50 mm añade 0,50 mm por lado (≈ +1 mm al ancho). −0,50 mm retira 0,50 mm por lado. Los agujeros y el DXF original no cambian. Podrás exportar un DXF ajustado con las medidas del STL. Si el offset destruye detalles o alcanza un agujero, no se exporta.</p>
     </div>
+    <label style="display:block;margin:12px 0"><input id="extrudeRepairTrial" type="checkbox"> <strong>PRUEBA: intentar corregir geometría para generar STL</strong></label>
+    <p class="extrude-note">Experimental: omite microcírculos espurios y puede desplazar hasta 3 mm agujeros circulares que cruzan el borde. Solo modifica el STL de esta vista; CAD, proyectos y DXF original no cambian. Revisa la pieza y las medidas antes de imprimir. DXF ajustado no disponible en este modo.</p>
     <p class="extrude-note">Solo perfiles cerrados · base plana en Z = 0 · compatible con laminadores STL. Para editar después, conserva el DXF.</p>
     <div id="extrudeError" class="stl-inline-error" role="alert"></div>
     <div class="extrude-actions"><button id="extrudeCancel" type="button">Cancelar</button><button id="extrudeConfirm" type="button">Vista previa 3D</button></div>
@@ -1086,6 +1088,7 @@ function validarCabecerasSTL(r,req,nTriangulos){
 function prepararSolicitudSTL(){
  const grosor=Number($('extrudeThickness').value),holgura=0;
  const precision='normal';
+ const reparar=$('extrudeRepairTrial').checked;
  const offset=Number($('extrudeOffset').value);
  if($('extrudeThickness').value.trim()===''||!Number.isFinite(grosor)||grosor<1||grosor>3)throw Error('Introduce un grosor entre 1 y 3 mm.');
  if($('extrudeOffset').value.trim()===''||!Number.isFinite(offset)||offset< -5||offset>5)throw Error('El offset exterior debe estar entre -5 y +5 mm.');
@@ -1097,8 +1100,8 @@ function prepararSolicitudSTL(){
  const tipo=entities===null?'automatico':'editado';
  const nombre=nombreSugeridoDXF().replace(/\.dxf$/i,'')+'_g'+String(grosor).replace('.','_')+'mm'+(offset?'_offset'+(offset>0?'mas':'menos')+String(Math.abs(offset)).replace('.','_')+'mm':'')+'.stl';
  const body={...payload(),nombre,sin_escala:false,entidades_editadas:entities,
-   exigir_edicion:tipo==='editado',guardar_copia:false,grosor,compensacion_agujeros:holgura,precision_stl:precision,offset_exterior:offset,objetivo_ancho_mm:null,objetivo_alto_mm:null};
- return {body,tipo,numEntidades:entities===null?null:entities.length,nombre,grosor,holgura,precision,offset};
+   exigir_edicion:tipo==='editado',guardar_copia:false,grosor,compensacion_agujeros:holgura,precision_stl:precision,offset_exterior:offset,reparacion_stl_prueba:reparar,objetivo_ancho_mm:null,objetivo_alto_mm:null};
+ return {body,tipo,numEntidades:entities===null?null:entities.length,nombre,grosor,holgura,precision,offset,reparar};
 }
 async function solicitarSTL(body,signal){
  const r=await fetch('/api/exportar-stl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal});
@@ -1153,8 +1156,8 @@ async function prepararVistaSTL(){
   $('stlShowOriginal').checked=true;
   mostrarComparativaSTL();
   $('stlPreviewInfo').textContent=ancho.toFixed(2)+' × '+alto.toFixed(2)+' × '+req.grosor.toFixed(2)+
-   ' mm · '+stlRender.triangulos.toLocaleString('es-ES')+' triángulos · offset '+(req.offset>0?'+':'')+req.offset.toFixed(2)+' mm';
-  $('stlPreviewSaveDXF').disabled=false;$('stlPreviewSave').focus();setProgress(100,'Vista 3D y medición listas. STL y DXF ajustado disponibles.');
+   ' mm · '+stlRender.triangulos.toLocaleString('es-ES')+' triángulos · offset '+(req.offset>0?'+':'')+req.offset.toFixed(2)+' mm'+(req.reparar?' · REPARACIÓN DE PRUEBA':'');
+  $('stlPreviewSaveDXF').disabled=!!req.reparar;$('stlPreviewSave').focus();setProgress(100,'Vista 3D y medición listas. STL y DXF ajustado disponibles.');
  }catch(e){avisoSTL('extrudeError',e.message);setProgress(0,'No se pudo preparar la vista STL');
     if(!stlVista){stlRender?.destruir();stlRender=null;
       stlPreviewBackdrop.style.display='none';stlPreviewBackdrop.setAttribute('aria-hidden','true');extrudeBackdrop.style.display='flex';}}
@@ -1220,8 +1223,8 @@ async function aplicarOffsetVista(valor){
   mostrarComparativaSTL();
   $('stlPreviewInfo').textContent=ancho.toFixed(2)+' × '+alto.toFixed(2)+' × '+req.grosor.toFixed(2)+' mm · '+
    stlRender.triangulos.toLocaleString('es-ES')+' triángulos · offset '+(valor>0?'+':'')+valor.toFixed(2)+' mm';
-  $('stlChangeStatus').textContent='Actualizado: mide o guarda esta versión.';
-  $('stlPreviewSave').disabled=false;$('stlPreviewSaveDXF').disabled=false;
+  $('stlChangeStatus').textContent=req.reparar?'MODO PRUEBA: revisa los agujeros desplazados antes de imprimir.':'Actualizado: mide o guarda esta versión.';
+  $('stlPreviewSave').disabled=false;$('stlPreviewSaveDXF').disabled=!!req.reparar;
  }catch(e){if(revision===stlCambioRevision&&e.name!=='AbortError'){
     avisoSTL('stlPreviewError','No se ha aplicado este offset: '+e.message+' Ajusta el valor antes de guardar.');
     $('stlChangeStatus').textContent='Offset no válido. No se permite exportar la versión anterior.';
