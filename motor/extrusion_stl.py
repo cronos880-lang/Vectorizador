@@ -6,6 +6,7 @@ geometrías problemáticas en lugar de crear sólidos defectuosos silenciosament
 from __future__ import annotations
 
 from collections import Counter
+from shapely.affinity import translate
 import math
 import struct
 
@@ -98,17 +99,25 @@ def _perfil(entidad, error_cuerda=ERROR_CUERDA, simplificacion=.005):
     return poly
 
 
-def _poligonos_solidos(entidades, error_cuerda=ERROR_CUERDA, simplificacion=.005):
+def _poligonos_solidos(entidades, error_cuerda=ERROR_CUERDA, simplificacion=.005, *, reparacion_prueba=False, notas=None):
     validar_entidades(entidades)
     if not entidades:raise ValueError('El editor CAD está vacío.')
     # Diagnóstico conjunto: mostrar todos los perfiles defectuosos a la vez.
     # Nunca eliminar, mover ni recortar agujeros de manera silenciosa.
     problemas=[]
+    if notas is None: notas=[]
     loops=[None]*len(entidades)
     for indice, entidad in enumerate(entidades, 1):
         try:
             loops[indice-1]=_perfil(entidad,error_cuerda,simplificacion)
         except ValueError as exc:
+            # Prueba reversible: ignorar solo microcírculos identificados
+            # como agujeros ópticos, sin modificar las entidades 2D.
+            if (reparacion_prueba and entidad.get('tipo')=='circle'
+                    and entidad.get('capa')=='AGUJEROS'
+                    and math.pi*entidad['radio']**2 < .01):
+                notas.append(f"Microcírculo {indice} omitido solo en STL")
+                continue
             identificador=entidad.get('id', f'entidad-{indice}')
             if entidad.get('tipo')=='circle':
                 detalle=(f"círculo ({entidad['cx']:.3f}, {entidad['cy']:.3f}) mm; "
@@ -118,6 +127,34 @@ def _poligonos_solidos(entidades, error_cuerda=ERROR_CUERDA, simplificacion=.005
             problemas.append(f"Entidad {indice} ({identificador}; {detalle}): {exc}")
     if sum(len(poly.exterior.coords) for poly in loops if poly is not None)>MAX_PUNTOS:
         raise ValueError('Demasiados puntos para generar un STL seguro.')
+    # Prueba opcional: desplazar mínimamente agujeros circulares parcialmente
+    # fuera del material. Nunca cambia el CAD, DXF ni archivo .vect.
+    if reparacion_prueba:
+        exteriores=[p for i,p in enumerate(loops) if
+                    p is not None and entidades[i].get('capa')=='CONTORNO_EXTERIOR']
+        for i,poly in enumerate(loops):
+            if (poly is None or entidades[i].get('tipo')!='circle'
+                    or entidades[i].get('capa')!='AGUJEROS'):
+                continue
+            if any(e.contains(poly) for e in exteriores):continue
+            shell=next((e for e in exteriores if e.intersects(poly)),None)
+            if shell is None:continue
+            origen=poly.centroid
+            destino=shell.representative_point()
+            dx=destino.x-origen.x;dy=destino.y-origen.y
+            modulo=math.hypot(dx,dy)
+            if modulo<=1e-9:continue
+            # Un agujero importante no debe moverse demasiado: 3 mm máximo.
+            limite=min(3.,entidades[i]['radio']*.8)
+            salto=min(.05,max(.005,limite/80))
+            distancia=salto
+            while distancia<=limite+1e-9:
+                candidato=translate(poly,dx*distancia/modulo,dy*distancia/modulo)
+                if shell.contains(candidato) and shell.boundary.distance(candidato)>.001:
+                    loops[i]=candidato
+                    notas.append(f"Agujero {i+1} desplazado {distancia:.3f} mm solo en STL")
+                    break
+                distancia+=salto
     parents=[None]*len(loops)
     for i,poly in enumerate(loops):
         if poly is None:continue
@@ -168,7 +205,7 @@ def _poligonos_solidos(entidades, error_cuerda=ERROR_CUERDA, simplificacion=.005
         return n
     solids=[]
     for i,outer in enumerate(loops):
-        if depth(i)%2:continue
+        if outer is None or depth(i)%2:continue
         holes=[list(loops[j].exterior.coords)[:-1] for j,p in enumerate(parents) if p==i and depth(j)%2]
         solid=orient(Polygon(list(outer.exterior.coords)[:-1],holes=holes),sign=1.0)
         if not solid.is_valid or solid.area<.01:
@@ -258,7 +295,8 @@ def _holgura_stl(solids, incremento_diametro, buffer_quad=16):
 
 
 def construir_stl(entidades:list[dict],grosor:float,compensacion_agujeros:float=0.0,
-                  precision_stl:str='normal',offset_exterior:float=0.0):
+                  precision_stl:str='normal',offset_exterior:float=0.0,
+                  reparacion_prueba:bool=False):
     """Devuelve (STL binario, metadatos) tras comprobar cierre, caras y volumen."""
     if not isinstance(grosor,(int,float)) or isinstance(grosor,bool) or not math.isfinite(grosor) or not 1<=grosor<=3:
         raise ValueError('El grosor debe estar entre 1 y 3 mm.')
@@ -271,10 +309,14 @@ def construir_stl(entidades:list[dict],grosor:float,compensacion_agujeros:float=
     if (not isinstance(offset_exterior,(int,float)) or isinstance(offset_exterior,bool)
             or not math.isfinite(offset_exterior) or abs(offset_exterior)>MAX_OFFSET_EXTERIOR_MM):
         raise ValueError('El offset exterior debe estar entre -5 y +5 mm.')
+    if not isinstance(reparacion_prueba,bool):
+        raise ValueError('Modo de reparación de prueba incorrecto.')
+    notas=[]
     config=PRECISION_STL[precision_stl]
     solids=_holgura_stl(
         _offset_exterior_stl(
-            _poligonos_solidos(entidades,config['error_cuerda'],config['simplificacion']),
+            _poligonos_solidos(entidades,config['error_cuerda'],config['simplificacion'],
+                            reparacion_prueba=reparacion_prueba,notas=notas),
             float(offset_exterior),config['buffer_quad']),
         float(compensacion_agujeros),config['buffer_quad'])
     vertices=[]
@@ -353,4 +395,4 @@ def construir_stl(entidades:list[dict],grosor:float,compensacion_agujeros:float=
                         'ancho_mm':round(bounds[2]-bounds[0],3),'alto_mm':round(bounds[3]-bounds[1],3),
                         'grosor_mm':float(grosor), 'compensacion_agujeros_mm':float(compensacion_agujeros),
                         'precision_stl':precision_stl, 'error_cuerda_mm':config['error_cuerda'],
-                        'offset_exterior_mm':float(offset_exterior)}
+                        'offset_exterior_mm':float(offset_exterior), 'reparaciones_prueba':notas}
