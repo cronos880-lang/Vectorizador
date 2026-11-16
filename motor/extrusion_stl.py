@@ -136,7 +136,14 @@ def _poligonos_solidos(entidades, error_cuerda=ERROR_CUERDA, simplificacion=.005
                     'uno de los agujeros puede sobresalir del exterior. '
                     'Revisa los perfiles en el editor 2D; no se han desplazado ni recortado.'
                 )
-        if containing:parents[i]=min(containing,key=lambda j:loops[j].area)
+        if containing:
+            parents[i]=min(containing,key=lambda j:loops[j].area)
+        elif entidades[i].get('capa') == 'AGUJEROS':
+            raise ValueError(
+                f'El agujero {i+1} ({entidades[i].get("id", "sin-id")}) está fuera '
+                'de cualquier contorno exterior. Revisa la detección en el editor 2D. '
+                'No se convierte en una segunda pieza sólida ni se elimina automáticamente.'
+            )
     def depth(i):
         n=0
         while parents[i] is not None:
