@@ -263,6 +263,7 @@ class ExportacionSTL(Exportacion):
     grosor:float
     compensacion_agujeros:float = 0.0
     precision_stl:Literal['normal','alta','maxima'] = 'normal'
+    reparacion_stl_prueba:bool = False
     offset_exterior:float = 0.0
     objetivo_ancho_mm:float|None = None
     objetivo_alto_mm:float|None = None
@@ -281,7 +282,8 @@ def exportar_stl(datos:ExportacionSTL):
                    else documento_inicial(datos.vector, datos.px_mm_x, datos.px_mm_y,
                                          datos.afin, datos.proyectiva, False)['entidades'])
         entidades,correccion=corregir_entidades(entidades,datos.objetivo_ancho_mm,datos.objetivo_alto_mm)
-        raw,meta=construir_stl(entidades, datos.grosor, datos.compensacion_agujeros, datos.precision_stl, datos.offset_exterior)
+        raw,meta=construir_stl(entidades, datos.grosor, datos.compensacion_agujeros, datos.precision_stl, datos.offset_exterior,
+                               datos.reparacion_stl_prueba)
         # Una vista previa existente DEBE coincidir antes de archivar los bytes.
         stl_hash=hashlib.sha256(raw).hexdigest()
         if datos.sha256_stl_esperado is not None and datos.sha256_stl_esperado != stl_hash:
@@ -304,6 +306,7 @@ def exportar_stl(datos:ExportacionSTL):
             'X-Vectorizador-Version':VERSION,
             'X-Vectorizador-Entidades':str(len(entidades)),
             'X-Vectorizador-Triangulos':str(meta['triangulos']),
+            'X-Vectorizador-Reparaciones-Prueba':str(len(meta['reparaciones_prueba'])),
             'X-Vectorizador-Ancho':str(meta['ancho_mm']),
             'X-Vectorizador-Alto':str(meta['alto_mm']),
             'X-Vectorizador-Grosor':str(meta['grosor_mm']),
@@ -331,6 +334,8 @@ def exportar_dxf_ajustado(datos:ExportacionSTL):
             raise ValueError('El DXF ajustado exige calibración real en milímetros.')
         if datos.exigir_edicion and datos.entidades_editadas is None:
             raise ValueError('Faltan las entidades CAD editadas. Exportación cancelada.')
+        if datos.reparacion_stl_prueba:
+            raise ValueError('DXF ajustado desactivado en modo reparación STL experimental: el CAD original no se ha modificado.')
         if not datos.sha256_stl_esperado or len(datos.sha256_stl_esperado)!=64:
             raise ValueError('Genera primero una vista previa STL validada antes de exportar el DXF ajustado.')
         entidades=(datos.entidades_editadas if datos.entidades_editadas is not None else
