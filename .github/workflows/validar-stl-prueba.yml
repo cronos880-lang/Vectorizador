@@ -1,0 +1,25 @@
+name: Pruebas STL de desarrollo
+on:
+  push:
+    branches: [fix/diagnostico-stl-geometria]
+  workflow_dispatch:
+jobs:
+  validar:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependencias declaradas
+        run: python -m pip install -r requirements.txt
+      - name: Compilar sintaxis Python
+        run: python -m compileall -q motor servidor.py launcher.py
+      - name: Ejecutar regresiones STL
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Comprobar interfaz y servidor V2.6
+        run: python COMPROBAR_V2_6.py
