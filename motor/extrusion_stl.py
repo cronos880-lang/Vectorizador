@@ -101,49 +101,62 @@ def _perfil(entidad, error_cuerda=ERROR_CUERDA, simplificacion=.005):
 def _poligonos_solidos(entidades, error_cuerda=ERROR_CUERDA, simplificacion=.005):
     validar_entidades(entidades)
     if not entidades:raise ValueError('El editor CAD está vacío.')
-    # No omitimos ni alteramos perfiles automáticamente: una detección óptica
-    # puede ser un agujero real. Informar la entidad permite corregirla en CAD.
-    loops=[]
+    # Diagnóstico conjunto: mostrar todos los perfiles defectuosos a la vez.
+    # Nunca eliminar, mover ni recortar agujeros de manera silenciosa.
+    problemas=[]
+    loops=[None]*len(entidades)
     for indice, entidad in enumerate(entidades, 1):
         try:
-            loops.append(_perfil(entidad,error_cuerda,simplificacion))
+            loops[indice-1]=_perfil(entidad,error_cuerda,simplificacion)
         except ValueError as exc:
             identificador=entidad.get('id', f'entidad-{indice}')
-            tipo=entidad.get('tipo', 'desconocido')
-            if tipo=='circle':
-                detalle=(f"círculo con centro ({entidad['cx']:.3f}, "
-                         f"{entidad['cy']:.3f}) mm y radio {entidad['radio']:.4f} mm")
+            if entidad.get('tipo')=='circle':
+                detalle=(f"círculo ({entidad['cx']:.3f}, {entidad['cy']:.3f}) mm; "
+                         f"radio {entidad['radio']:.4f} mm")
             else:
-                detalle=f"perfil {tipo}"
-            raise ValueError(
-                f"Entidad {indice} ({identificador}; {detalle}): {exc} "
-                'Revisa o elimina el elemento en el editor 2D antes de extruir. '
-                'No se ha modificado la geometría original.'
-            ) from exc
-    if sum(len(poly.exterior.coords) for poly in loops)>MAX_PUNTOS:
+                detalle=f"tipo {entidad.get('tipo', 'desconocido')}"
+            problemas.append(f"Entidad {indice} ({identificador}; {detalle}): {exc}")
+    if sum(len(poly.exterior.coords) for poly in loops if poly is not None)>MAX_PUNTOS:
         raise ValueError('Demasiados puntos para generar un STL seguro.')
     parents=[None]*len(loops)
     for i,poly in enumerate(loops):
+        if poly is None:continue
         containing=[]
         for j,other in enumerate(loops):
-            if i==j:continue
+            if i==j or other is None:continue
             if other.contains(poly):
                 containing.append(j)
-            elif not poly.contains(other) and not poly.disjoint(other):
-                raise ValueError(
-                    f'Contornos {i+1} y {j+1} ({entidades[i].get("id", "sin-id")} / '
-                    f'{entidades[j].get("id", "sin-id")}) se cruzan o tocan: '
-                    'uno de los agujeros puede sobresalir del exterior. '
-                    'Revisa los perfiles en el editor 2D; no se han desplazado ni recortado.'
+            elif i<j and not poly.contains(other) and not poly.disjoint(other):
+                if (entidades[i].get('capa')=='CONTORNO_EXTERIOR'
+                        and entidades[j].get('capa')=='AGUJEROS'):
+                    hueco,exterior=other,poly
+                    fuera=100*hueco.difference(exterior).area/hueco.area
+                    detalle=f"el agujero {j+1} sobresale {fuera:.2f}% del contorno {i+1}"
+                elif (entidades[j].get('capa')=='CONTORNO_EXTERIOR'
+                        and entidades[i].get('capa')=='AGUJEROS'):
+                    hueco,exterior=poly,other
+                    fuera=100*hueco.difference(exterior).area/hueco.area
+                    detalle=f"el agujero {i+1} sobresale {fuera:.2f}% del contorno {j+1}"
+                else:
+                    detalle=f"los contornos {i+1} y {j+1} se cruzan o se tocan"
+                problemas.append(
+                    f"Contornos {i+1} y {j+1} ({entidades[i].get('id','sin-id')} / "
+                    f"{entidades[j].get('id','sin-id')}): {detalle}"
                 )
         if containing:
             parents[i]=min(containing,key=lambda j:loops[j].area)
         elif entidades[i].get('capa') == 'AGUJEROS':
-            raise ValueError(
-                f'El agujero {i+1} ({entidades[i].get("id", "sin-id")}) está fuera '
-                'de cualquier contorno exterior. Revisa la detección en el editor 2D. '
-                'No se convierte en una segunda pieza sólida ni se elimina automáticamente.'
-            )
+            exteriores=[other for j,other in enumerate(loops) if (
+                j!=i and other is not None and
+                entidades[j].get('capa')=='CONTORNO_EXTERIOR')]
+            if not any(other.intersects(poly) for other in exteriores):
+                problemas.append(
+                    f"El agujero {i+1} ({entidades[i].get('id','sin-id')}) "
+                    "está fuera del contorno exterior"
+                )
+    if problemas:
+        raise ValueError('Geometría STL inválida: '+' | '.join(problemas)+
+                         '. Corrige los elementos en el editor 2D; el CAD no se ha modificado.')
     def depth(i):
         n=0
         while parents[i] is not None:
