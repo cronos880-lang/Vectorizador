@@ -33,6 +33,11 @@ class DiagnosticoSTLTest(unittest.TestCase):
             construir_stl(entidades, 2.5)
         self.assertEqual(len(entidades), 3)
 
+    def test_agujero_fuera_no_se_convierte_en_segundo_solido(self):
+        entidades = [exterior(), agujero('fuera', 65, 25, 3)]
+        with self.assertRaisesRegex(ValueError, 'El agujero 2 .*fuera.*está fuera'):
+            construir_stl(entidades, 2.5)
+
     def test_agujero_que_cruza_borde_identifica_entidades(self):
         entidades = [exterior(), agujero('cerca-del-borde', 2, 25, 4)]
         with self.assertRaisesRegex(ValueError, 'Contornos 1 y 2.*se cruzan o tocan'):
