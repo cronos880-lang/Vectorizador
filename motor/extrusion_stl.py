@@ -124,6 +124,10 @@ def _poligonos_solidos(entidades, error_cuerda=ERROR_CUERDA, simplificacion=.005
         containing=[]
         for j,other in enumerate(loops):
             if i==j or other is None:continue
+            if poly.equals(other):
+                if i<j:
+                    problemas.append(f"Contornos {i+1} y {j+1} duplicados: elimina una copia en el CAD")
+                continue
             if other.contains(poly):
                 containing.append(j)
             elif i<j and not poly.contains(other) and not poly.disjoint(other):
