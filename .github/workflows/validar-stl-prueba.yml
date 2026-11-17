@@ -29,7 +29,12 @@ jobs:
         run: |
           $errores=$null
           $tokens=$null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path "actualizador_stl/Actualizar_Vectorizador_STL.ps1").Path,[ref]$tokens,[ref]$errores) | Out-Null
+          foreach($ruta in @("actualizador_stl/Actualizar_Vectorizador_STL.ps1", "actualizador_stl/Restaurar_Vectorizador_STL.ps1")) {
+            $errores=$null
+            $tokens=$null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $ruta).Path,[ref]$tokens,[ref]$errores) | Out-Null
+            if ($errores.Count -gt 0) { foreach($error in $errores){Write-Error $error}; throw "Error de sintaxis en $ruta" }
+          }
           if ($errores.Count -gt 0) {
             foreach($error in $errores){Write-Error $error}
             throw "Error de sintaxis en actualizador PowerShell"
