@@ -1,8 +1,10 @@
-name: Pruebas STL de desarrollo
+name: Validar y preparar actualizacion STL de prueba
 on:
   push:
     branches: [fix/diagnostico-stl-geometria]
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   validar:
     strategy:
@@ -17,9 +19,60 @@ jobs:
           python-version: '3.11'
       - name: Instalar dependencias declaradas
         run: python -m pip install -r requirements.txt
-      - name: Compilar sintaxis Python
-        run: python -m compileall -q motor servidor.py launcher.py
-      - name: Ejecutar regresiones STL
+      - name: Validar sintaxis de Python
+        run: python -m compileall -q motor servidor.py launcher.py tests
+      - name: Probar extrusiones y recursos de interfaz
         run: python -m unittest discover -s tests -p "test_*.py" -v
-      - name: Comprobar interfaz y servidor V2.6
-        run: python COMPROBAR_V2_6.py
+
+  publicar-portable:
+    if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[publicar-update-stl]') }}
+    needs: validar
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependencias y PyInstaller ya declarado
+        run: python -m pip install -r requirements.txt -r requirements_empaquetado.txt
+      - name: Compilar EXE Windows 64 bits
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --windowed --onedir --name Vectorizador --icon vectorizador.ico --add-data "Vectorizador.html;." --add-data "editor.js;." --add-data "mejoras.js;." --add-data "visor_stl.js;." --add-data "medidor_stl.js;." --add-data "proyectos.js;." --add-data "plantillas;plantillas" --collect-all cv2 --collect-all ezdxf --collect-all shapely --collect-submodules uvicorn --collect-submodules pystray exe_entry.py
+          if ($LASTEXITCODE -ne 0) { throw "PyInstaller fallo" }
+          if (!(Test-Path "dist/Vectorizador/Vectorizador.exe")) { throw "Falta el ejecutable" }
+      - name: Verificar arranque de EXE portable en Windows
+        shell: pwsh
+        run: |
+          $exe=(Resolve-Path "dist/Vectorizador/Vectorizador.exe").Path
+          $p=Start-Process -FilePath $exe -PassThru
+          $ok=$false
+          try {
+            for($i=0;$i -lt 40;$i++){
+              Start-Sleep -Seconds 1
+              $inst=Join-Path $env:LOCALAPPDATA 'Vectorizador/instancia.json'
+              if(Test-Path $inst){
+                try {
+                  $port=(Get-Content $inst -Raw|ConvertFrom-Json).puerto
+                  $result=Invoke-RestMethod -Uri "http://127.0.0.1:$port/api/version" -TimeoutSec 2
+                  if($result.version -eq "V2.6"){ $ok=$true;break }
+                } catch {}
+              }
+              if($p.HasExited){break}
+            }
+            if (!$ok){ throw "El EXE no responde en /api/version" }
+          } finally {
+            if (!$p.HasExited){Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue}
+          }
+      - name: Empaquetar programa portable
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/Vectorizador/*" -DestinationPath "Vectorizador_STL_Windows_Portable_Prueba.zip" -Force
+          if ((Get-Item "Vectorizador_STL_Windows_Portable_Prueba.zip").Length -lt 1000000) {throw "Archivo comprimido anormalmente pequeno"}
+          Get-FileHash "Vectorizador_STL_Windows_Portable_Prueba.zip" -Algorithm SHA256 | Format-List
+      - name: Publicar paquete de prueba en GitHub Releases
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "stl-prueba-actualizacion-20261117" "Vectorizador_STL_Windows_Portable_Prueba.zip" --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Vectorizador V2.6 - STL actualizacion de prueba" --notes "Paquete portable Windows compilado con PyInstaller desde la rama fix/diagnostico-stl-geometria. No es la version oficial. Compatible con datos de AppData\\Local\\Vectorizador. Usar actualizador con copia de seguridad." --prerelease
