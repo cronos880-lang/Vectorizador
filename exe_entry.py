@@ -77,6 +77,31 @@ def main():
     if sys.platform != 'win32':
         raise RuntimeError('El EXE portable se compila y se ejecuta exclusivamente en Windows.')
 
+    # Verificación de paquete en CI Windows: no abre bandeja ni altera datos.
+    # Solo se activa con una variable de entorno explícita.
+    ruta_smoke=os.environ.get('VECTORIZADOR_STL_SMOKE_RESULT')
+    if ruta_smoke:
+        import servidor
+        from motor.extrusion_stl import construir_stl
+        from motor.editor_cad import validar_entidades
+        entidades=[
+            {'id':'pieza','tipo':'rectangle','capa':'CONTORNO_EXTERIOR',
+             'a':[0.0,0.0],'b':[50.0,50.0]},
+            {'id':'orificio','tipo':'circle','capa':'AGUJEROS',
+             'cx':25.0,'cy':25.0,'radio':3.0}
+        ]
+        validar_entidades(entidades)
+        stl,info=construir_stl(entidades,2.5)
+        if info['grosor_mm']!=2.5 or len(stl)<84:
+            raise RuntimeError('Error en la extrusión STL empaquetada.')
+        if not (servidor.ROOT/'Vectorizador.html').exists():
+            raise RuntimeError('No se incluyó la interfaz en el EXE.')
+        Path(ruta_smoke).write_text(
+            json.dumps({'version':servidor.VERSION,'grosor_mm':info['grosor_mm'],
+                        'triangulos':info['triangulos'],'stl_bytes':len(stl)}),
+            encoding='utf-8')
+        return
+
     iniciar_registro()
     import servidor
     servidor.ARCHIVOS = BASE_DATOS / 'Archivos'
