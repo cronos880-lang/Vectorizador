@@ -23,7 +23,6 @@ class SmokeTest(unittest.TestCase):
         self.assertIn("extrudeRepairTrial", html)
         self.assertIn("reparacion_stl_prueba:reparar", html)
         self.assertIn("DXF ajustado no disponible", html)
-        self.assertIn("2,5", html) if False else None
         self.assertIn("reparacion_stl_prueba", ExportacionSTL.model_fields)
 
 if __name__=="__main__":
