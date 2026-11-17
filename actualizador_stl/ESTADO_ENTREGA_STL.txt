@@ -1,0 +1,15 @@
+ACTUALIZACION STL DE PRUEBA PARA VECTORIZADOR V2.6 - 17/11/2026
+ESTADO: actualizacion solicitada por el propietario; NO version oficial nueva.
+OBJETIVO: trasladar al Vectorizador instalado el modo experimental STL
+que funciono en Windows con el trapecio superior a 2,5 mm.
+
+El actualizador no sustituye la base de datos ni los proyectos .vect:
+la instalacion ejecutable guarda los datos en
+%LOCALAPPDATA%\Vectorizador\Archivos.
+
+La compilacion Windows se realiza en GitHub Actions exclusivamente
+tras superar las pruebas CI. Se publica como prerrelease de prueba
+stl-prueba-actualizacion-20261117, con ZIP Windows portable.
+El actualizador descarga ese ZIP y guarda copia de recuperacion.
+
+NO APROBADO COMO VERSION OFICIAL. La base V2.6 main no se modifica.
