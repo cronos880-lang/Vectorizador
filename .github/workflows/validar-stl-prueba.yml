@@ -23,6 +23,17 @@ jobs:
         run: python -m compileall -q motor servidor.py launcher.py tests
       - name: Probar extrusiones y recursos de interfaz
         run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Validar sintaxis del actualizador PowerShell
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $errores=$null
+          $tokens=$null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path "actualizador_stl/Actualizar_Vectorizador_STL.ps1").Path,[ref]$tokens,[ref]$errores) | Out-Null
+          if ($errores.Count -gt 0) {
+            foreach($error in $errores){Write-Error $error}
+            throw "Error de sintaxis en actualizador PowerShell"
+          }
 
   publicar-portable:
     if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[publicar-update-stl]') }}
