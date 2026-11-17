@@ -41,29 +41,21 @@ jobs:
           python -m PyInstaller --noconfirm --clean --windowed --onedir --name Vectorizador --icon vectorizador.ico --add-data "Vectorizador.html;." --add-data "editor.js;." --add-data "mejoras.js;." --add-data "visor_stl.js;." --add-data "medidor_stl.js;." --add-data "proyectos.js;." --add-data "plantillas;plantillas" --collect-all cv2 --collect-all ezdxf --collect-all shapely --collect-submodules uvicorn --collect-submodules pystray exe_entry.py
           if ($LASTEXITCODE -ne 0) { throw "PyInstaller fallo" }
           if (!(Test-Path "dist/Vectorizador/Vectorizador.exe")) { throw "Falta el ejecutable" }
-      - name: Verificar arranque de EXE portable en Windows
+      - name: Verificar EXE real y STL de 2,5 mm en Windows
         shell: pwsh
         run: |
           $exe=(Resolve-Path "dist/Vectorizador/Vectorizador.exe").Path
-          $p=Start-Process -FilePath $exe -PassThru
-          $ok=$false
-          try {
-            for($i=0;$i -lt 40;$i++){
-              Start-Sleep -Seconds 1
-              $inst=Join-Path $env:LOCALAPPDATA 'Vectorizador/instancia.json'
-              if(Test-Path $inst){
-                try {
-                  $port=(Get-Content $inst -Raw|ConvertFrom-Json).puerto
-                  $result=Invoke-RestMethod -Uri "http://127.0.0.1:$port/api/version" -TimeoutSec 2
-                  if($result.version -eq "V2.6"){ $ok=$true;break }
-                } catch {}
-              }
-              if($p.HasExited){break}
-            }
-            if (!$ok){ throw "El EXE no responde en /api/version" }
-          } finally {
-            if (!$p.HasExited){Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue}
+          $archivo=Join-Path $env:RUNNER_TEMP "vectorizador_stl_smoke.json"
+          $env:VECTORIZADOR_STL_SMOKE_RESULT=$archivo
+          $proceso=Start-Process -FilePath $exe -Wait -PassThru
+          Remove-Item Env:\VECTORIZADOR_STL_SMOKE_RESULT
+          if ($proceso.ExitCode -ne 0) {throw "El ejecutable terminó con error $($proceso.ExitCode)"}
+          if (!(Test-Path $archivo)) {throw "El ejecutable no generó el informe de prueba"}
+          $info=(Get-Content $archivo -Raw|ConvertFrom-Json)
+          if ($info.version -ne 'V2.6' -or $info.grosor_mm -ne 2.5 -or $info.triangulos -lt 4) {
+            throw "El STL empaquetado no supera la prueba"
           }
+          Write-Host "STL compilado OK: $($info.triangulos) triangulos; $($info.stl_bytes) bytes"
       - name: Empaquetar programa portable
         shell: pwsh
         run: |
