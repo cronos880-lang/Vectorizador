@@ -33,3 +33,9 @@ empaquetado V2.6 de GitHub, cancela sin sustituir archivos y comunicanoslo.
 
 Rama de desarrollo: fix/diagnostico-stl-geometria
 Release de prueba: stl-prueba-actualizacion-20261117
+
+RESTAURAR LA INSTALACION ANTERIOR
+- Cierra Vectorizador.
+- Ejecuta Restaurar_Vectorizador_STL.bat del mismo ZIP.
+- Elige la copia Antes_STL_* y confirma la ruta de restauracion.
+- Si Windows no permite escribir, ejecutalo como administrador.
