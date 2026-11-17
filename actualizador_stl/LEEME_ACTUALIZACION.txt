@@ -1,0 +1,35 @@
+VECTORIZADOR V2.6 - ACTUALIZACION STL DE PRUEBA
+TIPO: ACTUALIZACION (no instalador completo), origen: V2.6 instalada.
+Esta entrega NO declara una nueva version oficial.
+
+1. Cierra Vectorizador desde su icono junto al reloj de Windows.
+2. Extrae este ZIP en una carpeta temporal NUEVA.
+3. Ejecuta Actualizar_Vectorizador_STL.bat.
+4. Confirma la ubicacion donde esta instalado Vectorizador.exe.
+5. El programa descarga desde GitHub el paquete Windows compilado,
+   guarda una copia de los archivos que reemplazara y aplica la actualizacion.
+6. Inicia Vectorizador con su acceso directo normal y prueba STL 2,5 mm.
+
+REQUIERE: Windows, Internet, permisos de escritura en la carpeta instalada.
+Si Windows indica falta de permisos, cierra el programa y ejecuta el BAT
+con el boton derecho > Ejecutar como administrador.
+No requiere instalar Python. NO desinstales V2.6 antes de actualizar.
+
+SEGURIDAD Y RECUPERACION
+- Los proyectos .vect, fotos, STL y DXF de
+  %LOCALAPPDATA%\\Vectorizador\\Archivos quedan fuera de la actualizacion.
+- Respaldo de archivos originales reemplazados en
+  %LOCALAPPDATA%\\Vectorizador\\Copias_actualizacion_STL\\Antes_STL_*
+- Si falla al copiar, intenta reponer automaticamente los archivos anteriores.
+- Si necesitas recuperar manualmente la version anterior, cierra Vectorizador,
+  conserva todos los datos y copia al directorio instalado los archivos guardados
+  en la carpeta Antes_STL_* (preservando estructura relativa).
+- El programa NO ha sido probado en tu Windows tras esta actualizacion.
+- La reparacion de STL es opcional y experimental; revisa dimensiones
+  y posiciones de los agujeros antes de imprimir.
+
+Importante: si tienes un EXE de instalacion con estructura distinta al
+empaquetado V2.6 de GitHub, cancela sin sustituir archivos y comunicanoslo.
+
+Rama de desarrollo: fix/diagnostico-stl-geometria
+Release de prueba: stl-prueba-actualizacion-20261117
